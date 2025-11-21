@@ -1,0 +1,119 @@
+@startuml
+
+' Configuration for better readability
+skinparam classAttributeIconSize 0
+
+' --- Identity and Ownership (Data Custodianship) ---
+class IdentityOwner {
+  - userDID: String 
+  - hashedEmail: String
+  - hashedNationalID: String
+  - creditTier: String
+  - incomeBand: String
+  - netWorth: Decimal
+  - dataPointer: String <<Encrypted Data Hash>>
+  - consents: List<Consent>
+  + registerDID(): void
+  + updateProfile(): void
+  + updateAssets(encryptedData: String): void 
+  + updateLiabilities(encryptedData: String): void 
+  + calculateNetWorth(): void 
+  + grantConsent(consentDetails: Consent): void
+  + revokeConsent(consentID: String): void
+  + provideData(dataType: String): String 
+}
+
+class Asset {
+  - assetID: String
+  - assetType: String
+  - value: Decimal
+  - ownershipPercentage: Decimal
+  + updateValue(newValue: Decimal): void
+}
+
+class Liability {
+  - liabilityID: String
+  - liabilityType: String
+  - amount: Decimal
+  - interestRate: Decimal
+  - monthlyPayment: Decimal
+  + updateAmount(newAmount: Decimal): void
+}
+
+class Consent {
+  - consentID: String
+  - ownerDID: String
+  - requesterID: String
+  - dataType: String
+  - startDate: DateTime
+  - endDate: DateTime
+  - status: String
+  + createConsent(): void
+  + revokeConsent(): void
+  + isValid(): Boolean
+}
+
+' --- System Components (On-Chain/Service Layer) ---
+
+class Requester {
+  - requesterID: String
+  - requesterType: String
+  - requestedData: List<String>
+  + requestData(ownerDID: String, dataType: String): void
+  + verifyConsent(ownerDID: String): Boolean
+  + accessData(ownerDID: String): String
+}
+
+class IdentityRegistry  {
+  - userDIDs: Map<String, Boolean> 
+  + registerUser(userDID: String, hashedID: String): void
+  + isRegistered(userDID: String): Boolean
+}
+
+class ConsentManager  {
+  - consents: Map<String, Consent> 
+  + createConsent(ownerDID: String, requesterID: String, dataType: String, durationDays: Integer): String
+  + revokeConsent(consentID: String): void
+  + isConsentValid(ownerDID: String, requesterID: String, dataType: String): Boolean
+}
+
+class DataSharing  {
+  - accessLogs: Map<String, String> 
+  + accessData(ownerDID: String, requesterID: String, dataType: String): String 
+  + createAccessLog(ownerDID: String, requesterID: String, dataType: String, success: Boolean): void
+  + getAccessLogs(ownerDID: String): List<String>
+}
+
+class FinancialDataService  {
+  - documents: Map<String, String> 
+  - calculatedScores: Map<String, Decimal> 
+  + calculateCreditScore(ownerDID: String): Decimal
+  + requestOwnerData(ownerDID: String, dataType: String): String
+  + generateSummary(ownerDID: String): String
+}
+
+' --- Relationships ---
+
+' Identity Owner owns the data
+IdentityOwner "1" -- "0..*" Asset : owns >
+IdentityOwner "1" -- "0..*" Liability : owes >
+IdentityOwner "1" -- "0..*" Consent : grants >
+
+' Registry manages the Identity Owner's existence (DID)
+IdentityRegistry "1" -- "0..*" IdentityOwner : registers >
+
+' Management of Consent
+Requester "1" -- "0..*" Consent : requests >
+ConsentManager "1" -- "0..*" Consent : manages >
+
+' Data Flow and Access Control
+Requester "1" -> "1" DataSharing : requests data from >
+
+DataSharing "1" --> "1" ConsentManager : verifies consent via >
+DataSharing "1" --> "1" IdentityOwner : fetches data from >
+DataSharing "1" ..> "1" FinancialDataService : provides authorized data to
+
+' Financial Data Service calculates the final score
+FinancialDataService "1" --> "1" DataSharing : requests raw data via
+
+@enduml
