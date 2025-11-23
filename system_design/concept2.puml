@@ -91,7 +91,7 @@ class DataSharing  {
 class TokenRewards {
   - tokenName: String
   - tokenSymbol: String
-  - rewardRate: Map<String, Decimal> <<per purpose>>
+  - rewardRate: Map<String, Decimal>
   - researchWhitelist: List<String>
   - rewardedConsents: Map<String, Decimal>
   + mintReward(ownerDID: String, consentID: String, purpose: String): void
