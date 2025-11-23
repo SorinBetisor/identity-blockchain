@@ -5,87 +5,82 @@ skinparam classAttributeIconSize 0
 
 ' --- Identity and Ownership (Data Custodianship) ---
 class IdentityOwner {
-  - userDID: String 
-  - hashedEmail: String
-  - hashedNationalID: String
+  - userDID: address
   - creditTier: String
+  - riskScore: Integer
   - incomeBand: String
   - netWorth: Decimal
-  - dataPointer: String <<Encrypted Data Hash>>
-  - consents: List<Consent>
-  + registerDID(): void
-  + updateProfile(): void
-  + updateAssets(encryptedData: String): void 
-  + updateLiabilities(encryptedData: String): void 
-  + calculateNetWorth(): void 
-  + grantConsent(consentDetails: Consent): void
-  + revokeConsent(consentID: String): void
-  + provideData(dataType: String): String 
-}
-
-class Asset {
-  - assetID: String
-  - assetType: String
-  - value: Decimal
-  - ownershipPercentage: Decimal
-  + updateValue(newValue: Decimal): void
-}
-
-class Liability {
-  - liabilityID: String
-  - liabilityType: String
-  - amount: Decimal
-  - interestRate: Decimal
-  - monthlyPayment: Decimal
-  + updateAmount(newAmount: Decimal): void
+  - dataPointer: bytes32 <<Off-chain hash>>
+  - registeredAt: DateTime
+  - active: Boolean
 }
 
 class Consent {
-  - consentID: String
-  - ownerDID: String
-  - requesterID: String
+  - consentID: bytes32
+  - ownerDID: address
+  - requesterID: address
   - dataType: String
   - purpose: String
   - purposeTier: String
   - startDate: DateTime
   - endDate: DateTime
   - status: String
+  - dataPointer: bytes32 <<Off-chain hash>>
+  - rewardMinted: Boolean
   + createConsent(): void
   + revokeConsent(): void
   + isValid(): Boolean
 }
 
+class AccessLog {
+  - logID: bytes32
+  - ownerDID: address
+  - requesterID: address
+  - dataType: String
+  - purpose: String
+  - consentID: bytes32
+  - timestamp: DateTime
+  - success: Boolean
+  - details: String
+}
+
 ' --- System Components (On-Chain/Service Layer) ---
 
 class Requester {
-  - requesterID: String
+  - requesterID: address
   - requesterType: String
   - currentPurpose: String
   - requestedData: List<String>
   + declarePurpose(purpose: String): void
-  + requestData(ownerDID: String, dataType: String, purpose: String): void
-  + verifyConsent(ownerDID: String, purpose: String): Boolean
-  + accessData(ownerDID: String, purpose: String): String
+  + requestData(ownerDID: address, dataType: String, purpose: String): void
+  + verifyConsent(ownerDID: address, purpose: String): Boolean
+  + accessData(ownerDID: address, purpose: String): String
 }
 
 class IdentityRegistry  {
-  - userDIDs: Map<String, Boolean> 
-  + registerUser(userDID: String, hashedID: String): void
-  + isRegistered(userDID: String): Boolean
+  - profiles: Map<address, IdentityOwner> 
+  + registerUser(dataPointer: bytes32): void
+  + updateSummary(userDID: address, creditTier: String, riskScore: Integer, incomeBand: String, netWorth: Decimal): void
+  + updateDataPointer(userDID: address, dataPointer: bytes32): void
+  + getUserSummary(userDID: address): IdentityOwner
+  + isRegistered(userDID: address): Boolean
 }
 
 class ConsentManager  {
-  - consents: Map<String, Consent> 
-  + createConsent(ownerDID: String, requesterID: String, dataType: String, purpose: String, purposeTier: String, durationDays: Integer): String
-  + revokeConsent(consentID: String): void
-  + isConsentValid(ownerDID: String, requesterID: String, dataType: String, purpose: String): Boolean
+  - consents: Map<bytes32, Consent> 
+  - ownerConsents: Map<address, List<bytes32>> 
+  + setConsent(ownerDID: address, requesterID: address, dataType: String, purpose: String, purposeTier: String, durationDays: Integer, dataPointer: bytes32): bytes32
+  + revokeConsent(consentID: bytes32): void
+  + isConsentValid(ownerDID: address, requesterID: address, dataType: String, purpose: String): Boolean
+  + getConsent(consentID: bytes32): Consent
 }
 
 class DataSharing  {
-  - accessLogs: Map<String, String> 
-  + accessData(ownerDID: String, requesterID: String, dataType: String, purpose: String): String 
-  + createAccessLog(ownerDID: String, requesterID: String, dataType: String, purpose: String, success: Boolean): void
-  + getAccessLogs(ownerDID: String): List<String>
+  - accessLogs: Map<bytes32, AccessLog> 
+  + shareData(ownerDID: address, dataPointer: bytes32): void
+  + requestAccess(ownerDID: address, requesterID: address, dataType: String, purpose: String): bytes32 
+  + createAccessLog(ownerDID: address, requesterID: address, dataType: String, purpose: String, consentID: bytes32, success: Boolean): void
+  + getAccessLogs(ownerDID: address): List<AccessLog>
 }
 
 class TokenRewards {
@@ -93,9 +88,9 @@ class TokenRewards {
   - tokenSymbol: String
   - rewardRate: Map<String, Decimal>
   - researchWhitelist: List<String>
-  - rewardedConsents: Map<String, Decimal>
-  + mintReward(ownerDID: String, consentID: String, purpose: String): void
-  + isEligibleResearch(requesterID: String, purpose: String): Boolean
+  - rewardedConsents: Map<bytes32, Boolean>
+  + mintForConsent(ownerDID: address, consentID: bytes32, purposeTier: String): void
+  + isEligibleResearch(requesterID: address, purpose: String): Boolean
   + setRewardRate(purpose: String, newRate: Decimal): void
 }
 
@@ -107,19 +102,18 @@ class PurposeRegistry {
 }
 
 class FinancialDataService  {
-  - documents: Map<String, String> 
-  - calculatedScores: Map<String, Decimal> 
-  + calculateCreditScore(ownerDID: String): Decimal
-  + requestOwnerData(ownerDID: String, dataType: String): String
-  + generateSummary(ownerDID: String): String
+  - documents: Map<address, String> 
+  - calculatedScores: Map<address, Decimal> 
+  + calculateCreditScore(ownerDID: address): Decimal
+  + requestOwnerData(ownerDID: address, dataType: String): String
+  + generateSummary(ownerDID: address): String
 }
 
 ' --- Relationships ---
 
 ' Identity Owner owns the data
-IdentityOwner "1" -- "0..*" Asset : owns >
-IdentityOwner "1" -- "0..*" Liability : owes >
 IdentityOwner "1" -- "0..*" Consent : grants >
+IdentityOwner "1" -- "0..*" AccessLog : generates >
 
 ' Registry manages the Identity Owner's existence (DID)
 IdentityRegistry "1" -- "0..*" IdentityOwner : registers >
@@ -132,21 +126,28 @@ ConsentManager "1" -- "0..*" Consent : manages >
 Requester "1" -> "1" DataSharing : requests data from >
 
 DataSharing "1" --> "1" ConsentManager : verifies consent via >
-DataSharing "1" --> "1" IdentityOwner : fetches data from >
+DataSharing "1" --> "1" IdentityRegistry : fetches pointers from >
+DataSharing "1" --> "1" AccessLog : writes audit to >
 DataSharing "1" ..> "1" FinancialDataService : provides authorized data to
-DataSharing "1" --> "1" TokenRewards : triggers research rewards via >
 DataSharing "1" --> "1" PurposeRegistry : validates purpose >
 
-TokenRewards "1" ..> "1" ConsentManager : checks consent purpose >
 TokenRewards "1" --> "0..*" IdentityOwner : mints incentives to >
 TokenRewards "1" --> "1" PurposeRegistry : enforces purpose catalog >
+TokenRewards "1" ..> "1" ConsentManager : triggered on consent creation >
 ConsentManager "1" --> "1" PurposeRegistry : validates purpose >
 Requester "1" --> "1" PurposeRegistry : selects from catalog >
 
 ' Financial Data Service calculates the final score
+FinancialDataService "1" --> "1" IdentityRegistry : submits summaries >
 FinancialDataService "1" --> "1" DataSharing : requests raw data via
 
-note "Per-purpose consent: consent key = owner + requester + dataType + purpose; only catalogued purposes allowed; rewards tiered per purpose." as N1
+note "Per-purpose consent key = owner + requester + dataType + purpose.\nRewards mint exactly once on SetConsent; no token transfers during data access; tokens only signal access eligibility, data stays off-chain." as N1
 N1 .. TokenRewards
+
+note right of IdentityOwner
+  Minimal on-chain identity: DID + summary scores + off-chain hash (dataPointer).
+  Email/national ID stay off-chain; dedup/verification handled off-chain.
+  Assets/Liabilities stored locally as encrypted JSON; hash stored in dataPointer.
+end note
 
 @enduml
