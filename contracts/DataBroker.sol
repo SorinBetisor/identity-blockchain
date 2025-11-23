@@ -7,9 +7,6 @@ import "./IdentityRegistry.sol";
 /**
  * @title DataBroker
  * @notice Gateway contract that enforces consent verification before allowing data access
- * @dev Acts as the connection point between requesters, consents, and users.
- *      Requesters (e.g., banks) must have valid consent before accessing user data.
- *      This contract verifies consent and then retrieves data from IdentityRegistry.
  */
 contract DataBroker {
     /// @notice Reference to the ConsentManager contract for consent verification
@@ -19,11 +16,40 @@ contract DataBroker {
     IdentityRegistry public identityRegistry;
 
     /**
+     * @notice Emitted when data access is granted
+     * @param requesterDID Address of the requester
+     * @param ownerDID Address of the user whose data was accessed
+     * @param dataType Type of data accessed
+     * @param timestamp Block timestamp
+     */
+    event DataAccessGranted(
+        address indexed requesterDID,
+        address indexed ownerDID,
+        string dataType,
+        uint256 timestamp
+    );
+
+    /**
+     * @notice Emitted when data access is denied
+     * @param requesterDID Address of the requester
+     * @param ownerDID Address of the user whose data was requested
+     * @param dataType Type of data requested
+     * @param reason Reason for denial
+     * @param timestamp Block timestamp
+     */
+    event DataAccessDenied(
+        address indexed requesterDID,
+        address indexed ownerDID,
+        string dataType,
+        string reason,
+        uint256 timestamp
+    );
+
+    /**
      * @notice Requester information structure
-     * @dev Currently defined but not actively used - reserved for future requester registration
      * @param requesterDID Ethereum address of the requester
-     * @param requesterName Human-readable name of the requester (e.g., "Bank XYZ")
-     * @param requesterType Type of requester (e.g., "bank", "lender", "fintech")
+     * @param requesterName Human-readable name of the requester
+     * @param requesterType Type of requester
      */
     struct Requester {
         address requesterDID;
@@ -33,9 +59,8 @@ contract DataBroker {
 
     /**
      * @notice Initialize DataBroker with contract addresses
-     * @dev Sets up references to ConsentManager and IdentityRegistry contracts
-     * @param _consentManagerAddress Address of the deployed ConsentManager contract
-     * @param _identityRegistryAddress Address of the deployed IdentityRegistry contract
+     * @param _consentManagerAddress Address of ConsentManager contract
+     * @param _identityRegistryAddress Address of IdentityRegistry contract
      */
     constructor(
         address _consentManagerAddress,
@@ -46,38 +71,97 @@ contract DataBroker {
     }
 
     /**
-     * @notice Get the credit tier for a user (with consent verification)
-     * @dev Verifies that msg.sender (requester) has valid granted consent from the user
-     *      before returning the credit tier. This is the main access point for requesters.
-     * @param ownerDID Ethereum address of the user whose data is being requested
-     * @return Credit tier classification (None, LowBronze, MidGold, etc.)
-     * @custom:security Only requesters with valid granted consent can access data
+     * @notice Get the credit tier for a user with consent verification
+     * @param ownerDID Address of the user whose data is being requested
+     * @return Credit tier classification
      */
     function getCreditTier(
         address ownerDID
-    ) external view returns (IdentityRegistry.CreditTier) {
-        require(
-            consentManager.isConsentGranted(ownerDID, msg.sender),
-            "No valid consent"
-        );
-        return identityRegistry.getCreditTier(ownerDID);
+    ) external returns (IdentityRegistry.CreditTier) {
+        try identityRegistry.getCreditTier(ownerDID) returns (
+            IdentityRegistry.CreditTier tier
+        ) {
+            // Check consent
+            bool hasConsent = consentManager.isConsentGranted(
+                ownerDID,
+                msg.sender
+            );
+            if (!hasConsent) {
+                emit DataAccessDenied(
+                    msg.sender,
+                    ownerDID,
+                    "creditTier",
+                    "No valid consent",
+                    block.timestamp
+                );
+                revert("No valid consent");
+            }
+            // Access granted - emit audit log
+            emit DataAccessGranted(
+                msg.sender,
+                ownerDID,
+                "creditTier",
+                block.timestamp
+            );
+            return tier;
+        } catch Error(string memory reason) {
+            // User not registered or other error
+            emit DataAccessDenied(
+                msg.sender,
+                ownerDID,
+                "creditTier",
+                reason,
+                block.timestamp
+            );
+            revert(reason);
+        }
     }
 
     /**
-     * @notice Get the income band for a user (with consent verification)
-     * @dev Verifies that msg.sender (requester) has valid granted consent from the user
-     *      before returning the income band. This is the main access point for requesters.
-     * @param ownerDID Ethereum address of the user whose data is being requested
-     * @return Income band classification (None, upto25k, upto150k, etc.)
-     * @custom:security Only requesters with valid granted consent can access data
+     * @notice Get the income band for a user with consent verification
+     * @param ownerDID Address of the user whose data is being requested
+     * @return Income band classification
      */
     function getIncomeBand(
         address ownerDID
-    ) external view returns (IdentityRegistry.IncomeBand) {
-        require(
-            consentManager.isConsentGranted(ownerDID, msg.sender),
-            "No valid consent"
-        );
-        return identityRegistry.getIncomeBand(ownerDID);
+    ) external returns (IdentityRegistry.IncomeBand) {
+        // Check if user is registered first
+        try identityRegistry.getIncomeBand(ownerDID) returns (
+            IdentityRegistry.IncomeBand band
+        ) {
+            // Check consent
+            bool hasConsent = consentManager.isConsentGranted(
+                ownerDID,
+                msg.sender
+            );
+            if (!hasConsent) {
+                emit DataAccessDenied(
+                    msg.sender,
+                    ownerDID,
+                    "incomeBand",
+                    "No valid consent",
+                    block.timestamp
+                );
+                revert("No valid consent");
+            }
+            // Access granted - emit audit log
+            emit DataAccessGranted(
+                msg.sender,
+                ownerDID,
+                "incomeBand",
+                block.timestamp
+            );
+            return band;
+        } catch Error(string memory reason) {
+            // User not registered or other error
+            emit DataAccessDenied(
+                msg.sender,
+                ownerDID,
+                "incomeBand",
+                reason,
+                block.timestamp
+            );
+            revert(reason);
+        }
     }
 }
