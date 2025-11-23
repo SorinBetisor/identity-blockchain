@@ -10,7 +10,7 @@ class IdentityOwner {
   - riskScore: Integer
   - incomeBand: String
   - netWorth: Decimal
-  - dataPointer: bytes32 <<Off-chain hash>>
+  - dataPointer: bytes32
   - registeredAt: DateTime
   - active: Boolean
 }
@@ -25,7 +25,7 @@ class Consent {
   - startDate: DateTime
   - endDate: DateTime
   - status: String
-  - dataPointer: bytes32 <<Off-chain hash>>
+  - dataPointer: bytes32
   - rewardMinted: Boolean
   + createConsent(): void
   + revokeConsent(): void
