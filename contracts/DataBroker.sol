@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
+import "./ConsentManager.sol";
+import "./IdentityRegistry.sol";
+
 contract DataBroker {
+
+  ConsentManager public consentManager;
+  IdentityRegistry public identityRegistry;
 
   struct Requester 
   {
@@ -10,10 +16,9 @@ contract DataBroker {
     string requesterType;
   }
 
-  modifier onlyRequester(address requesterDID) {
-    require(msg.sender == requesterDID, "Only requester can perform this action");
-    _;
+  constructor(address _consentManagerAddress, address _identityRegistryAddress) {
+    consentManager = ConsentManager(_consentManagerAddress);
+    identityRegistry = IdentityRegistry(_identityRegistryAddress);
   }
-
   
 }
