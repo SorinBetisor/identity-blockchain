@@ -1,157 +1,118 @@
 @startuml
 
-' Configuration for better readability
 skinparam classAttributeIconSize 0
 
-package "On-Chain Smart Contracts" #FFF4CC {
-' --- Identity and Ownership (Data Custodianship) ---
-class IdentityOwner {
-  - userDID: address
-  - creditTier: String
-  - riskScore: Integer
-  - incomeBand: String
-  - netWorth: Decimal
-  - dataPointer: bytes32
-  - registeredAt: DateTime
-  - active: Boolean
+package "On-Chain Smart Contracts" #FFF4CC  {
+class IdentityProfile {
+  - userDID : address
+  - creditTier : CreditTier
+  - incomeBand : IncomeBand
+  - dataPointer : bytes32
+}
+
+class IdentityRegistry {
+  - identities : mapping
+  + register() : void
+  + updateProfile(userDID : address, creditTier : CreditTier, incomeBand : IncomeBand) : void
+  + updateDataPointer(dataPointer : bytes32) : void
+  + verifyAddressOwnership(userAddress : address, message : bytes, signature : bytes) : bool
+  + getCreditTier(ownerDID : address) : CreditTier
+  + getIncomeBand(ownerDID : address) : IncomeBand
 }
 
 class Consent {
-  - consentID: bytes32
-  - ownerDID: address
-  - requesterID: address
-  - dataType: String
-  - purpose: String
-  - purposeTier: String
-  - startDate: DateTime
-  - endDate: DateTime
-  - status: String
-  - dataPointer: bytes32
-  - rewardMinted: Boolean
-  + createConsent(): void
-  + revokeConsent(): void
-  + isValid(): Boolean
+  - consentID : bytes32
+  - requesterDID : address
+  - userDID : address
+  - startDate : uint256
+  - endDate : uint256
+  - status : ConsentStatus
 }
 
-class AccessLog {
-  - logID: bytes32
-  - ownerDID: address
-  - requesterID: address
-  - dataType: String
-  - purpose: String
-  - consentID: bytes32
-  - timestamp: DateTime
-  - success: Boolean
-  - details: String
+class ConsentManager {
+  - consents : mapping
+  + createConsent(requesterDID : address, userDID : address, startDate : uint256, endDate : uint256) : bytes32
+  + changeStatus(userDID : address, consentID : bytes32, newStatus : ConsentStatus) : void
+  + isConsentGranted(userDID : address, requesterDID : address) : bool
+  + getConsent(consentID : bytes32) : Consent
 }
 
-' --- System Components (On-Chain/Service Layer) ---
-
-class Requester {
-  - requesterID: address
-  - requesterType: String
-  - currentPurpose: String
-  - requestedData: List<String>
-  + declarePurpose(purpose: String): void
-  + requestData(ownerDID: address, dataType: String, purpose: String): void
-  + verifyConsent(ownerDID: address, purpose: String): Boolean
-  + accessData(ownerDID: address, purpose: String): String
-}
-
-class IdentityRegistry  {
-  - profiles: Map<address, IdentityOwner> 
-  + registerUser(dataPointer: bytes32): void
-  + updateSummary(userDID: address, creditTier: String, riskScore: Integer, incomeBand: String, netWorth: Decimal): void
-  + updateDataPointer(userDID: address, dataPointer: bytes32): void
-  + getUserSummary(userDID: address): IdentityOwner
-  + isRegistered(userDID: address): Boolean
-}
-
-class ConsentManager  {
-  - consents: Map<bytes32, Consent> 
-  - ownerConsents: Map<address, List<bytes32>> 
-  + setConsent(ownerDID: address, requesterID: address, dataType: String, purpose: String, purposeTier: String, durationDays: Integer, dataPointer: bytes32): bytes32
-  + revokeConsent(consentID: bytes32): void
-  + isConsentValid(ownerDID: address, requesterID: address, dataType: String, purpose: String): Boolean
-  + getConsent(consentID: bytes32): Consent
-}
-
-class DataSharing  {
-  - accessLogs: Map<bytes32, AccessLog> 
-  + shareData(ownerDID: address, dataPointer: bytes32): void
-  + requestAccess(ownerDID: address, requesterID: address, dataType: String, purpose: String): bytes32 
-  + createAccessLog(ownerDID: address, requesterID: address, dataType: String, purpose: String, consentID: bytes32, success: Boolean): void
-  + getAccessLogs(ownerDID: address): List<AccessLog>
-}
-
-class TokenRewards {
-  - tokenName: String
-  - tokenSymbol: String
-  - rewardRate: Map<String, Decimal>
-  - researchWhitelist: List<String>
-  - rewardedConsents: Map<bytes32, Boolean>
-  + mintForConsent(ownerDID: address, consentID: bytes32, purposeTier: String): void
-  + isEligibleResearch(requesterID: address, purpose: String): Boolean
-  + setRewardRate(purpose: String, newRate: Decimal): void
-}
-
-class PurposeRegistry {
-  - allowedPurposes: List<String>
-  - purposeTiers: Map<String, String>
-  + isAllowed(purpose: String): Boolean
-  + getTier(purpose: String): String
+class DataBroker {
+  + getCreditTier(ownerDID : address) : CreditTier
+  + getIncomeBand(ownerDID : address) : IncomeBand
 }
 }
 
-package "Off-Chain Services / Data" #DFF0FF {
-class FinancialDataService  {
-  - documents: Map<address, String> 
-  - calculatedScores: Map<address, Decimal> 
-  + calculateCreditScore(ownerDID: address): Decimal
-  + requestOwnerData(ownerDID: address, dataType: String): String
-  + generateSummary(ownerDID: address): String
+package "Off-Chain Services" {
+class FinancialDataStorage {
+  + save(financial_data) : bytes32
+  + load(user_did)
+  + verify_hash(user_did, expected_hash) : bool
+  + add_asset()
+  + add_liability()
+  + remove_asset()
+  + remove_liability()
+}
+
+class DocumentValidatorService {
+  + validate_documents(encrypted_docs)
+  + calculate_credit_tier(financial_data) : CreditTier
+  + calculate_income_band(income_data) : IncomeBand
+  + update_on_chain_profile(user_address, credit_tier, income_band) : void
+}
+
+class CreditCalculator {
+  + calculate_net_worth(assets, liabilities)
+  + classify_credit_tier(financial_metrics) : CreditTier
+  + classify_income_band(annual_income) : IncomeBand
+  + calculate_risk_score(financial_data) : uint16
+}
+
+class ClientApplication {
+  + register_on_chain() : void
+  + upload_financial_data() : bytes32
+  + submit_to_validator() : void
+  + grant_consent(requester_address : address) : void
+  + update_data_pointer(hash : bytes32) : void
+  + revoke_consent(requester_address : address) : void
+  + view_credit_profile() : void
+  + view_access_logs() : void
 }
 }
 
-' --- Relationships ---
+IdentityRegistry "1" --> "0..*" IdentityProfile : stores
+ConsentManager "1" --> "0..*" Consent : manages
+DataBroker --> ConsentManager : checks consent via
+DataBroker --> IdentityRegistry : reads credit tier/income
+DocumentValidatorService --> IdentityRegistry : updateProfile()
+DocumentValidatorService --> CreditCalculator : uses
+ClientApplication --> IdentityRegistry : register()/updateDataPointer()
+ClientApplication --> ConsentManager : createConsent()/changeStatus()
+ClientApplication --> FinancialDataStorage : encrypts & stores data
+ClientApplication --> DocumentValidatorService : submits encrypted docs
+FinancialDataStorage ..> IdentityRegistry : returns hash for dataPointer
+Bank --> IdentityRegistry : verifyAddressOwnership()/check registration
+Bank --> DataBroker : requests credit tier/income band
+Bank ..> ClientApplication : requests consent from
+Validator --> DocumentValidatorService : operates
+Client --> ClientApplication : uses wallet
 
-' Identity Owner owns the data
-IdentityOwner "1" -- "0..*" Consent : grants >
-IdentityOwner "1" -- "0..*" AccessLog : generates >
+note right of IdentityRegistry
+  Stores publicly verifiable creditTier and incomeBand set by validator,
+  plus dataPointer hash pointing to encrypted off-chain financial data.
+  verifyAddressOwnership() proves the client controls their Ethereum address.
+end note
 
-' Registry manages the Identity Owner's existence (DID)
-IdentityRegistry "1" -- "0..*" IdentityOwner : registers >
+note bottom of ConsentManager
+  Consent lifecycle: client creates consent with bank requester,
+  then grants/revokes via changeStatus(); DataBroker enforces isConsentGranted
+  before exposing IdentityRegistry summaries.
+end note
 
-' Management of Consent
-Requester "1" -- "0..*" Consent : requests >
-ConsentManager "1" -- "0..*" Consent : manages >
-
-' Data Flow and Access Control
-Requester "1" -> "1" DataSharing : requests data from >
-
-DataSharing "1" --> "1" ConsentManager : verifies consent via >
-DataSharing "1" --> "1" IdentityRegistry : fetches pointers from >
-DataSharing "1" --> "1" AccessLog : writes audit to >
-DataSharing "1" ..> "1" FinancialDataService : provides authorized data to
-DataSharing "1" --> "1" PurposeRegistry : validates purpose >
-
-TokenRewards "1" --> "0..*" IdentityOwner : mints incentives to >
-TokenRewards "1" --> "1" PurposeRegistry : enforces purpose catalog >
-TokenRewards "1" ..> "1" ConsentManager : triggered on consent creation >
-ConsentManager "1" --> "1" PurposeRegistry : validates purpose >
-Requester "1" --> "1" PurposeRegistry : selects from catalog >
-
-' Financial Data Service calculates the final score
-FinancialDataService "1" --> "1" IdentityRegistry : submits summaries >
-FinancialDataService "1" --> "1" DataSharing : requests raw data via
-
-note "Per-purpose consent key = owner + requester + dataType + purpose.\nRewards mint exactly once on SetConsent; no token transfers during data access; tokens only signal access eligibility, data stays off-chain." as N1
-N1 .. TokenRewards
-
-note right of IdentityOwner
-  Minimal on-chain identity: DID + summary scores + off-chain hash (dataPointer).
-  Email/national ID stay off-chain; dedup/verification handled off-chain.
-  Assets/Liabilities stored locally as encrypted JSON; hash stored in dataPointer.
+note bottom of FinancialDataStorage
+  Raw financial data (assets, liabilities, documents) remains off-chain,
+  encrypted per user. Saved hash feeds IdentityRegistry.updateDataPointer
+  so banks can optionally verify integrity by recomputing the hash.
 end note
 
 legend right
