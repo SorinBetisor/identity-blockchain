@@ -45,6 +45,8 @@ class Consent {
   - ownerDID: String
   - requesterID: String
   - dataType: String
+  - purpose: String
+  - purposeTier: String
   - startDate: DateTime
   - endDate: DateTime
   - status: String
@@ -58,10 +60,12 @@ class Consent {
 class Requester {
   - requesterID: String
   - requesterType: String
+  - currentPurpose: String
   - requestedData: List<String>
-  + requestData(ownerDID: String, dataType: String): void
-  + verifyConsent(ownerDID: String): Boolean
-  + accessData(ownerDID: String): String
+  + declarePurpose(purpose: String): void
+  + requestData(ownerDID: String, dataType: String, purpose: String): void
+  + verifyConsent(ownerDID: String, purpose: String): Boolean
+  + accessData(ownerDID: String, purpose: String): String
 }
 
 class IdentityRegistry  {
@@ -72,16 +76,34 @@ class IdentityRegistry  {
 
 class ConsentManager  {
   - consents: Map<String, Consent> 
-  + createConsent(ownerDID: String, requesterID: String, dataType: String, durationDays: Integer): String
+  + createConsent(ownerDID: String, requesterID: String, dataType: String, purpose: String, purposeTier: String, durationDays: Integer): String
   + revokeConsent(consentID: String): void
-  + isConsentValid(ownerDID: String, requesterID: String, dataType: String): Boolean
+  + isConsentValid(ownerDID: String, requesterID: String, dataType: String, purpose: String): Boolean
 }
 
 class DataSharing  {
   - accessLogs: Map<String, String> 
-  + accessData(ownerDID: String, requesterID: String, dataType: String): String 
-  + createAccessLog(ownerDID: String, requesterID: String, dataType: String, success: Boolean): void
+  + accessData(ownerDID: String, requesterID: String, dataType: String, purpose: String): String 
+  + createAccessLog(ownerDID: String, requesterID: String, dataType: String, purpose: String, success: Boolean): void
   + getAccessLogs(ownerDID: String): List<String>
+}
+
+class TokenRewards {
+  - tokenName: String
+  - tokenSymbol: String
+  - rewardRate: Map<String, Decimal> <<per purpose>>
+  - researchWhitelist: List<String>
+  - rewardedConsents: Map<String, Decimal>
+  + mintReward(ownerDID: String, consentID: String, purpose: String): void
+  + isEligibleResearch(requesterID: String, purpose: String): Boolean
+  + setRewardRate(purpose: String, newRate: Decimal): void
+}
+
+class PurposeRegistry {
+  - allowedPurposes: List<String>
+  - purposeTiers: Map<String, String>
+  + isAllowed(purpose: String): Boolean
+  + getTier(purpose: String): String
 }
 
 class FinancialDataService  {
@@ -112,8 +134,19 @@ Requester "1" -> "1" DataSharing : requests data from >
 DataSharing "1" --> "1" ConsentManager : verifies consent via >
 DataSharing "1" --> "1" IdentityOwner : fetches data from >
 DataSharing "1" ..> "1" FinancialDataService : provides authorized data to
+DataSharing "1" --> "1" TokenRewards : triggers research rewards via >
+DataSharing "1" --> "1" PurposeRegistry : validates purpose >
+
+TokenRewards "1" ..> "1" ConsentManager : checks consent purpose >
+TokenRewards "1" --> "0..*" IdentityOwner : mints incentives to >
+TokenRewards "1" --> "1" PurposeRegistry : enforces purpose catalog >
+ConsentManager "1" --> "1" PurposeRegistry : validates purpose >
+Requester "1" --> "1" PurposeRegistry : selects from catalog >
 
 ' Financial Data Service calculates the final score
 FinancialDataService "1" --> "1" DataSharing : requests raw data via
+
+note "Per-purpose consent: consent key = owner + requester + dataType + purpose; only catalogued purposes allowed; rewards tiered per purpose." as N1
+N1 .. TokenRewards
 
 @enduml
