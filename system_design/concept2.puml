@@ -3,6 +3,7 @@
 ' Configuration for better readability
 skinparam classAttributeIconSize 0
 
+package "On-Chain Smart Contracts" #FFF4CC {
 ' --- Identity and Ownership (Data Custodianship) ---
 class IdentityOwner {
   - userDID: address
@@ -100,13 +101,16 @@ class PurposeRegistry {
   + isAllowed(purpose: String): Boolean
   + getTier(purpose: String): String
 }
+}
 
+package "Off-Chain Services / Data" #DFF0FF {
 class FinancialDataService  {
   - documents: Map<address, String> 
   - calculatedScores: Map<address, Decimal> 
   + calculateCreditScore(ownerDID: address): Decimal
   + requestOwnerData(ownerDID: address, dataType: String): String
   + generateSummary(ownerDID: address): String
+}
 }
 
 ' --- Relationships ---
@@ -149,5 +153,10 @@ note right of IdentityOwner
   Email/national ID stay off-chain; dedup/verification handled off-chain.
   Assets/Liabilities stored locally as encrypted JSON; hash stored in dataPointer.
 end note
+
+legend right
+  |<#FFF4CC>| On-chain smart contracts / ledger state |
+  |<#DFF0FF>| Off-chain services / encrypted data |
+end legend
 
 @enduml
