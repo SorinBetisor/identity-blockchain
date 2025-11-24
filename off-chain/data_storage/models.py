@@ -78,6 +78,8 @@ class Liability:
     amount: float  # Outstanding balance in base currency units
     interestRate: float  # Annual interest rate as percentage (0-100)
     monthlyPayment: float  # Monthly payment amount
+    dueDate: str  # date in ISO 8601 format
+    isOverdue: bool = False
     lastUpdated: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     metadata: Optional[dict] = None
 
@@ -89,6 +91,8 @@ class Liability:
             raise ValueError("amount must be non-negative")
         if self.monthlyPayment < 0:
             raise ValueError("monthlyPayment must be non-negative")
+        if not isinstance(self.dueDate, str) or not self.dueDate:
+            raise ValueError("dueDate must be a non-empty string in ISO 8601 format")
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization"""
