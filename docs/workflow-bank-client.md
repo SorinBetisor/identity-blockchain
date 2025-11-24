@@ -4,11 +4,12 @@ This document explains the complete workflow for a bank-client scenario where a 
 
 ## System Overview
 
-The system consists of three main smart contracts:
+The system consists of four main smart contracts:
 
 - **IdentityRegistry**: Manages user registration and credit profile data
 - **ConsentManager**: Handles consent agreements between users and requesters
 - **DataBroker**: Enforces consent verification before allowing data access
+- **DataSharingToken**: ERC20-style reward token minted when consented data sharing occurs
 
 ## Complete Workflow
 
@@ -317,6 +318,22 @@ DataBroker.getIncomeBand(
 
 ---
 
+#### Step 2.7: User Earns Reward Tokens for Sharing
+
+**Actor**: Client (reward recipient)
+**Contract**: `DataBroker` + `DataSharingToken`
+**Function**: Reward minted automatically during `getCreditTier()`/`getIncomeBand()`
+
+**What happens:**
+
+- When consent is valid and data is returned, `DataBroker` mints a `DataSharingToken` reward to the data owner
+- Mint amount is configured at deployment (`rewardPerAccess`)
+- Reward is issued once per requester/user pair to prevent farming the incentive
+- Event `RewardDistributed` is emitted for auditability
+
+**Result**: Clients receive on-chain tokens whenever they share their credit summary with a new requester.
+
+---
 ### Phase 3: Data Integrity Verification (Optional)
 
 #### Step 3.1: Bank Verifies Off-Chain Data Integrity
@@ -577,9 +594,10 @@ DataBroker.getIncomeBand(
 
 ## Future Enhancements
 
-- Token rewards for data sharing
+- Extended token reward schemes (tiered rewards, staking) on top of the base DataSharingToken minting
 - Multiple validators for redundancy
 - Reputation system for validators
 - Cross-chain compatibility
 - Mobile wallet integration
 - Automated consent expiration handling
+

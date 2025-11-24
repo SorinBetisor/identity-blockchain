@@ -41,6 +41,15 @@ class DataBroker {
   + getCreditTier(ownerDID : address) : CreditTier
   + getIncomeBand(ownerDID : address) : IncomeBand
 }
+
+class DataSharingToken {
+  - totalSupply : uint256
+  - balanceOf : mapping
+  - minters : mapping
+  + mint(to : address, amount : uint256) : void
+  + addMinter(minter : address) : void
+  + removeMinter(minter : address) : void
+}
 }
 
 package "Off-Chain Services" {
@@ -84,6 +93,7 @@ IdentityRegistry "1" --> "0..*" IdentityProfile : stores
 ConsentManager "1" --> "0..*" Consent : manages
 DataBroker --> ConsentManager : checks consent via
 DataBroker --> IdentityRegistry : reads credit tier/income
+DataBroker --> DataSharingToken : mints rewards to user
 DocumentValidatorService --> IdentityRegistry : updateProfile()
 DocumentValidatorService --> CreditCalculator : uses
 ClientApplication --> IdentityRegistry : register()/updateDataPointer()
@@ -107,6 +117,12 @@ note bottom of ConsentManager
   Consent lifecycle: client creates consent with bank requester,
   then grants/revokes via changeStatus(); DataBroker enforces isConsentGranted
   before exposing IdentityRegistry summaries.
+end note
+
+note right of DataBroker
+  On first successful consent-checked access per requester/user pair,
+  DataBroker mints reward tokens to the data owner via DataSharingToken.
+  Rewards can be tuned at deployment by rewardPerAccess.
 end note
 
 note bottom of FinancialDataStorage
