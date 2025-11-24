@@ -5,24 +5,31 @@ import {Test, console2} from "forge-std/Test.sol";
 import {DataBroker} from "../contracts/DataBroker.sol";
 import {ConsentManager} from "../contracts/ConsentManager.sol";
 import {IdentityRegistry} from "../contracts/IdentityRegistry.sol";
+import {DataSharingToken} from "../contracts/DataSharingToken.sol";
 
 contract DataBrokerTest is Test {
     DataBroker public dataBroker;
     ConsentManager public consentManager;
     IdentityRegistry public identityRegistry;
+    DataSharingToken public rewardToken;
     
     address public validator = address(0x0000000000000000000000042000000000000000);
     address public user = address(0x1);
     address public requester = address(0x2);
     address public otherRequester = address(0x3);
+    uint256 public rewardAmount = 10 ether;
 
     function setUp() public {
         identityRegistry = new IdentityRegistry();
         consentManager = new ConsentManager();
+        rewardToken = new DataSharingToken("Credit Data Sharing Token", "CDST");
         dataBroker = new DataBroker(
             address(consentManager),
-            address(identityRegistry)
+            address(identityRegistry),
+            address(rewardToken),
+            rewardAmount
         );
+        rewardToken.addMinter(address(dataBroker));
         
         // Setup: Register user and set profile
         vm.prank(user);
@@ -34,6 +41,24 @@ contract DataBrokerTest is Test {
             IdentityRegistry.IncomeBand.upto150k,
             user
         );
+    }
+
+    function _grantConsent(address requesterAddr) internal returns (bytes32) {
+        uint96 startDate = uint96(block.timestamp);
+        uint96 endDate = uint96(block.timestamp + 30 days);
+
+        vm.prank(user);
+        consentManager.createConsent(requesterAddr, user, startDate, endDate);
+
+        bytes32 consentID = keccak256(abi.encodePacked(requesterAddr, user));
+        vm.prank(user);
+        consentManager.changeStatus(
+            user,
+            consentID,
+            ConsentManager.ConsentStatus.Granted
+        );
+
+        return consentID;
     }
 
     // ============ Get Credit Tier Tests ============
@@ -212,6 +237,44 @@ contract DataBrokerTest is Test {
         vm.expectRevert("No valid consent");
         vm.prank(otherRequester);
         dataBroker.getCreditTier(user);
+    }
+
+    // ============ Reward Token Tests ============
+
+    function test_RewardMintedOnFirstAccess() public {
+        _grantConsent(requester);
+
+        vm.prank(requester);
+        dataBroker.getCreditTier(user);
+
+        assertEq(rewardToken.balanceOf(user), rewardAmount);
+    }
+
+    function test_RewardOnlyOncePerRequesterPair() public {
+        _grantConsent(requester);
+
+        vm.prank(requester);
+        dataBroker.getCreditTier(user);
+
+        vm.prank(requester);
+        dataBroker.getIncomeBand(user);
+
+        bytes32 key = keccak256(abi.encodePacked(user, requester));
+        assertTrue(dataBroker.rewardClaimed(key));
+        assertEq(rewardToken.balanceOf(user), rewardAmount);
+    }
+
+    function test_RewardForDifferentRequesters() public {
+        _grantConsent(requester);
+        _grantConsent(otherRequester);
+
+        vm.prank(requester);
+        dataBroker.getCreditTier(user);
+
+        vm.prank(otherRequester);
+        dataBroker.getIncomeBand(user);
+
+        assertEq(rewardToken.balanceOf(user), rewardAmount * 2);
     }
 
     // ============ Gas Measurement ============
