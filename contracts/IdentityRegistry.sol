@@ -167,11 +167,14 @@ contract IdentityRegistry {
     function updateDataPointer(
         bytes32 dataPointer
     ) external onlyRegistered {
-        identities[msg.sender].dataPointer = dataPointer;
+        Identity storage identity = identities[msg.sender];
+        if (identity.dataPointer != dataPointer) {
+            identity.dataPointer = dataPointer;
+        }
         emit ProfileUpdated(
             msg.sender,
-            identities[msg.sender].creditTier,
-            identities[msg.sender].incomeBand,
+            identity.creditTier,
+            identity.incomeBand,
             dataPointer,
             msg.sender,
             block.timestamp
@@ -189,14 +192,19 @@ contract IdentityRegistry {
         IncomeBand incomeBand,
         address userDID
     ) external onlyValidator {
-        if (identities[userDID].userDID == address(0)) revert NotRegistered();
-        identities[userDID].creditTier = creditTier;
-        identities[userDID].incomeBand = incomeBand;
+        Identity storage identity = identities[userDID];
+        if (identity.userDID == address(0)) revert NotRegistered();
+        if (identity.creditTier != creditTier) {
+            identity.creditTier = creditTier;
+        }
+        if (identity.incomeBand != incomeBand) {
+            identity.incomeBand = incomeBand;
+        }
         emit ProfileUpdated(
             userDID,
             creditTier,
             incomeBand,
-            identities[userDID].dataPointer,
+            identity.dataPointer,
             msg.sender,
             block.timestamp
         );
@@ -208,8 +216,9 @@ contract IdentityRegistry {
      * @return Credit tier classification
      */
     function getCreditTier(address userDID) external view returns (CreditTier) {
-        require(identities[userDID].userDID != address(0), "Not registered");
-        return identities[userDID].creditTier;
+        Identity storage identity = identities[userDID];
+        if (identity.userDID == address(0)) revert NotRegistered();
+        return identity.creditTier;
     }
 
     /**
@@ -218,7 +227,8 @@ contract IdentityRegistry {
      * @return Income band classification
      */
     function getIncomeBand(address userDID) external view returns (IncomeBand) {
-        require(identities[userDID].userDID != address(0), "Not registered");
-        return identities[userDID].incomeBand;
+        Identity storage identity = identities[userDID];
+        if (identity.userDID == address(0)) revert NotRegistered();
+        return identity.incomeBand;
     }
 }

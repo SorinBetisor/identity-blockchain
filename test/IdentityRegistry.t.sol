@@ -264,7 +264,7 @@ contract IdentityRegistryTest is Test {
     }
 
     function test_GetCreditTier_RevertIfNotRegistered() public {
-        vm.expectRevert("Not registered");
+        vm.expectRevert(IdentityRegistry.NotRegistered.selector);
         identityRegistry.getCreditTier(user);
     }
 
@@ -284,7 +284,7 @@ contract IdentityRegistryTest is Test {
     }
 
     function test_GetIncomeBand_RevertIfNotRegistered() public {
-        vm.expectRevert("Not registered");
+        vm.expectRevert(IdentityRegistry.NotRegistered.selector);
         identityRegistry.getIncomeBand(user);
     }
 

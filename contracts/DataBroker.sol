@@ -10,6 +10,9 @@ import "./DataSharingToken.sol";
  * @notice Gateway contract that enforces consent verification before allowing data access
  */
 contract DataBroker {
+    error ConsentMissing();
+    error UserNotRegistered();
+
     /// @notice Reference to the ConsentManager contract for consent verification
     ConsentManager public consentManager;
 
@@ -116,44 +119,33 @@ contract DataBroker {
     function getCreditTier(
         address ownerDID
     ) external returns (IdentityRegistry.CreditTier) {
-        try identityRegistry.getCreditTier(ownerDID) returns (
-            IdentityRegistry.CreditTier tier
-        ) {
-            // Check consent
-            bool hasConsent = consentManager.isConsentGranted(
-                ownerDID,
-                msg.sender
-            );
-            if (!hasConsent) {
-                emit DataAccessDenied(
-                    msg.sender,
-                    ownerDID,
-                    "creditTier",
-                    "No valid consent",
-                    block.timestamp
-                );
-                revert("No valid consent");
-            }
-            // Access granted - emit audit log
-            emit DataAccessGranted(
-                msg.sender,
-                ownerDID,
-                "creditTier",
-                block.timestamp
-            );
-            _maybeReward(ownerDID, msg.sender, "creditTier");
-            return tier;
-        } catch Error(string memory reason) {
-            // User not registered or other error
+        (address storedUser, IdentityRegistry.CreditTier tier, , ) = identityRegistry
+            .identities(ownerDID);
+        if (storedUser == address(0)) {
             emit DataAccessDenied(
                 msg.sender,
                 ownerDID,
                 "creditTier",
-                reason,
+                "Not registered",
                 block.timestamp
             );
-            revert(reason);
+            revert UserNotRegistered();
         }
+
+        if (!_hasConsent(ownerDID)) {
+            emit DataAccessDenied(
+                msg.sender,
+                ownerDID,
+                "creditTier",
+                "No valid consent",
+                block.timestamp
+            );
+            revert ConsentMissing();
+        }
+
+        emit DataAccessGranted(msg.sender, ownerDID, "creditTier", block.timestamp);
+        _maybeReward(ownerDID, msg.sender, "creditTier");
+        return tier;
     }
 
     /**
@@ -164,45 +156,31 @@ contract DataBroker {
     function getIncomeBand(
         address ownerDID
     ) external returns (IdentityRegistry.IncomeBand) {
-        // Check if user is registered first
-        try identityRegistry.getIncomeBand(ownerDID) returns (
-            IdentityRegistry.IncomeBand band
-        ) {
-            // Check consent
-            bool hasConsent = consentManager.isConsentGranted(
-                ownerDID,
-                msg.sender
-            );
-            if (!hasConsent) {
-                emit DataAccessDenied(
-                    msg.sender,
-                    ownerDID,
-                    "incomeBand",
-                    "No valid consent",
-                    block.timestamp
-                );
-                revert("No valid consent");
-            }
-            // Access granted - emit audit log
-            emit DataAccessGranted(
-                msg.sender,
-                ownerDID,
-                "incomeBand",
-                block.timestamp
-            );
-            _maybeReward(ownerDID, msg.sender, "incomeBand");
-            return band;
-        } catch Error(string memory reason) {
-            // User not registered or other error
+        (address storedUser, , IdentityRegistry.IncomeBand band, ) = identityRegistry
+            .identities(ownerDID);
+        if (storedUser == address(0)) {
             emit DataAccessDenied(
                 msg.sender,
                 ownerDID,
                 "incomeBand",
-                reason,
+                "Not registered",
                 block.timestamp
             );
-            revert(reason);
+            revert UserNotRegistered();
         }
+        if (!_hasConsent(ownerDID)) {
+            emit DataAccessDenied(
+                msg.sender,
+                ownerDID,
+                "incomeBand",
+                "No valid consent",
+                block.timestamp
+            );
+            revert ConsentMissing();
+        }
+        emit DataAccessGranted(msg.sender, ownerDID, "incomeBand", block.timestamp);
+        _maybeReward(ownerDID, msg.sender, "incomeBand");
+        return band;
     }
 
     /**
@@ -227,5 +205,9 @@ contract DataBroker {
             dataType,
             block.timestamp
         );
+    }
+
+    function _hasConsent(address ownerDID) internal view returns (bool) {
+        return consentManager.isConsentGranted(ownerDID, msg.sender);
     }
 }
