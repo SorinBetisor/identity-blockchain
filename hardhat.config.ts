@@ -1,8 +1,9 @@
-import "@nomicfoundation/hardhat-toolbox-viem";
+import hardhatToolboxViemPlugin from "@nomicfoundation/hardhat-toolbox-viem";
 import "@nomicfoundation/hardhat-ignition-viem";
 import { configVariable, defineConfig } from "hardhat/config";
 
 export default defineConfig({
+  plugins: [hardhatToolboxViemPlugin],
   solidity: {
     version: "0.8.28",
     settings: {
@@ -20,6 +21,10 @@ export default defineConfig({
     hardhatOp: {
       type: "edr-simulated",
       chainType: "op",
+    },
+    localhost: {
+      type: "http",
+      url: "http://127.0.0.1:8545",
     },
     sepolia: {
       type: "http",

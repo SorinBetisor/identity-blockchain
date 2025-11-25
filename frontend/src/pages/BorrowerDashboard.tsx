@@ -1,6 +1,7 @@
 import { IdentityCard } from '../components/IdentityCard'
 import { GrantConsent } from '../components/GrantConsent'
 import { RevokeConsent } from '../components/RevokeConsent'
+import { GrantedConsents } from '../components/GrantedConsents'
 
 export function BorrowerDashboard() {
   return (
@@ -18,6 +19,8 @@ export function BorrowerDashboard() {
           <RevokeConsent />
         </div>
       </div>
+
+      <GrantedConsents />
     </div>
   )
 }

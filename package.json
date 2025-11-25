@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
+    "dev": "npx tsx scripts/dev.ts",
     "deploy:local": "npx hardhat ignition deploy ignition/modules/IdentitySystem.ts --network hardhatMainnet",
     "deploy:local:op": "npx hardhat ignition deploy ignition/modules/IdentitySystem.ts --network hardhatOp",
     "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/IdentitySystem.ts --network sepolia"
