@@ -119,9 +119,11 @@ contract DataBroker {
     function getCreditTier(
         address ownerDID
     ) external returns (IdentityRegistry.CreditTier) {
-        (address storedUser, IdentityRegistry.CreditTier tier, , ) = identityRegistry
-            .identities(ownerDID);
-        if (storedUser == address(0)) {
+        (
+            IdentityRegistry.Identity memory identity,
+            bool isRegistered
+        ) = identityRegistry.getIdentity(ownerDID);
+        if (!isRegistered) {
             emit DataAccessDenied(
                 msg.sender,
                 ownerDID,
@@ -145,7 +147,7 @@ contract DataBroker {
 
         emit DataAccessGranted(msg.sender, ownerDID, "creditTier", block.timestamp);
         _maybeReward(ownerDID, msg.sender, "creditTier");
-        return tier;
+        return identity.creditTier;
     }
 
     /**
@@ -156,9 +158,11 @@ contract DataBroker {
     function getIncomeBand(
         address ownerDID
     ) external returns (IdentityRegistry.IncomeBand) {
-        (address storedUser, , IdentityRegistry.IncomeBand band, ) = identityRegistry
-            .identities(ownerDID);
-        if (storedUser == address(0)) {
+        (
+            IdentityRegistry.Identity memory identity,
+            bool isRegistered
+        ) = identityRegistry.getIdentity(ownerDID);
+        if (!isRegistered) {
             emit DataAccessDenied(
                 msg.sender,
                 ownerDID,
@@ -180,7 +184,7 @@ contract DataBroker {
         }
         emit DataAccessGranted(msg.sender, ownerDID, "incomeBand", block.timestamp);
         _maybeReward(ownerDID, msg.sender, "incomeBand");
-        return band;
+        return identity.incomeBand;
     }
 
     /**

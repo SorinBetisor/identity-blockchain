@@ -170,15 +170,15 @@ contract IdentityRegistry {
         Identity storage identity = identities[msg.sender];
         if (identity.dataPointer != dataPointer) {
             identity.dataPointer = dataPointer;
+            emit ProfileUpdated(
+                msg.sender,
+                identity.creditTier,
+                identity.incomeBand,
+                dataPointer,
+                msg.sender,
+                block.timestamp
+            );
         }
-        emit ProfileUpdated(
-            msg.sender,
-            identity.creditTier,
-            identity.incomeBand,
-            dataPointer,
-            msg.sender,
-            block.timestamp
-        );
     }
 
     /**
@@ -194,20 +194,25 @@ contract IdentityRegistry {
     ) external onlyValidator {
         Identity storage identity = identities[userDID];
         if (identity.userDID == address(0)) revert NotRegistered();
+        bool changed;
         if (identity.creditTier != creditTier) {
             identity.creditTier = creditTier;
+            changed = true;
         }
         if (identity.incomeBand != incomeBand) {
             identity.incomeBand = incomeBand;
+            changed = true;
         }
-        emit ProfileUpdated(
-            userDID,
-            creditTier,
-            incomeBand,
-            identity.dataPointer,
-            msg.sender,
-            block.timestamp
-        );
+        if (changed) {
+            emit ProfileUpdated(
+                userDID,
+                creditTier,
+                incomeBand,
+                identity.dataPointer,
+                msg.sender,
+                block.timestamp
+            );
+        }
     }
 
     /**
@@ -230,5 +235,18 @@ contract IdentityRegistry {
         Identity storage identity = identities[userDID];
         if (identity.userDID == address(0)) revert NotRegistered();
         return identity.incomeBand;
+    }
+
+    /**
+     * @notice Fetch the full identity and registration status in one call
+     * @param userDID Address of the user to query
+     * @return identity Identity data (zeroed if not registered)
+     * @return isRegistered True if the user is registered
+     */
+    function getIdentity(
+        address userDID
+    ) external view returns (Identity memory identity, bool isRegistered) {
+        identity = identities[userDID];
+        isRegistered = identity.userDID != address(0);
     }
 }
