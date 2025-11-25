@@ -6,6 +6,7 @@
   "scripts": {
     "test": "npx hardhat test",
     "compile": "npx hardhat compile",
+    "dev": "npx tsx scripts/dev.ts",
     "deploy:local": "npx hardhat ignition deploy ignition/modules/IdentitySystem.ts --network hardhatMainnet",
     "deploy:local:op": "npx hardhat ignition deploy ignition/modules/IdentitySystem.ts --network hardhatOp",
     "deploy:sepolia": "npx hardhat ignition deploy ignition/modules/IdentitySystem.ts --network sepolia"
@@ -30,5 +31,11 @@
     "hardhat": "^3.0.15",
     "typescript": "~5.8.0",
     "viem": "^2.39.3"
+  },
+  "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
   }
 }

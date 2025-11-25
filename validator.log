@@ -1,0 +1,26 @@
+Mock Validator Service running on http://localhost:3001
+Impersonating validator: 0x0000000000000000000000042000000000000000
+Received verification request for 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+Document Hash: 0x123
+Verification failed: Cannot read properties of undefined (reading 'request')
+Mock Validator Service running on http://localhost:3001
+Impersonating validator: 0x0000000000000000000000042000000000000000
+Received verification request for 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+Document Hash: 0x123
+Inside getValidatorClient
+Error: hre.network.provider is undefined
+Verification failed: hre.network.provider is undefined
+Mock Validator Service running on http://localhost:3001
+Impersonating validator: 0x0000000000000000000000042000000000000000
+Received verification request for 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+Document Hash: 0x123
+Inside getValidatorClient
+hre.network keys: connect, createServer
+Verification failed: Cannot read properties of undefined (reading 'getTestClient')
+Mock Validator Service running on http://localhost:3001
+Impersonating validator: 0x0000000000000000000000042000000000000000
+Received verification request for 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+Document Hash: 0x123
+Inside getValidatorClient
+hre.network keys: connect, createServer
+Verification failed: Cannot read properties of undefined (reading 'getTestClient')
