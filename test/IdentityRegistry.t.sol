@@ -264,7 +264,7 @@ contract IdentityRegistryTest is Test {
     }
 
     function test_GetCreditTier_RevertIfNotRegistered() public {
-        vm.expectRevert("Not registered");
+        vm.expectRevert(IdentityRegistry.NotRegistered.selector);
         identityRegistry.getCreditTier(user);
     }
 
@@ -284,8 +284,47 @@ contract IdentityRegistryTest is Test {
     }
 
     function test_GetIncomeBand_RevertIfNotRegistered() public {
-        vm.expectRevert("Not registered");
+        vm.expectRevert(IdentityRegistry.NotRegistered.selector);
         identityRegistry.getIncomeBand(user);
+    }
+
+    // ============ New Getter Tests ============
+
+    function test_GetIdentity_ReturnsDataAndFlag() public {
+        vm.prank(user);
+        identityRegistry.register();
+
+        bytes32 dataPointer = keccak256("test-data");
+        vm.prank(user);
+        identityRegistry.updateDataPointer(dataPointer);
+
+        vm.prank(validator);
+        identityRegistry.updateProfile(
+            IdentityRegistry.CreditTier.MidGold,
+            IdentityRegistry.IncomeBand.upto150k,
+            user
+        );
+
+        (
+            IdentityRegistry.Identity memory identity,
+            bool isRegistered
+        ) = identityRegistry.getIdentity(user);
+
+        assertTrue(isRegistered);
+        assertEq(identity.userDID, user);
+        assertEq(uint8(identity.creditTier), uint8(IdentityRegistry.CreditTier.MidGold));
+        assertEq(uint8(identity.incomeBand), uint8(IdentityRegistry.IncomeBand.upto150k));
+        assertEq(identity.dataPointer, dataPointer);
+    }
+
+    function test_GetIdentity_NotRegisteredReturnsFalse() public view {
+        (
+            IdentityRegistry.Identity memory identity,
+            bool isRegistered
+        ) = identityRegistry.getIdentity(user);
+
+        assertFalse(isRegistered);
+        assertEq(identity.userDID, address(0));
     }
 
     // ============ Verify Address Ownership Tests ============

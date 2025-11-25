@@ -103,7 +103,7 @@ contract DataBrokerTest is Test {
     }
 
     function test_GetCreditTier_RevertIfNoConsent() public {
-        vm.expectRevert("No valid consent");
+        vm.expectRevert(DataBroker.ConsentMissing.selector);
         vm.prank(requester);
         dataBroker.getCreditTier(user);
     }
@@ -113,7 +113,7 @@ contract DataBrokerTest is Test {
         emit DataBroker.DataAccessDenied(requester, user, "creditTier", "No valid consent", block.timestamp);
         
         vm.prank(requester);
-        vm.expectRevert("No valid consent");
+        vm.expectRevert(DataBroker.ConsentMissing.selector);
         dataBroker.getCreditTier(user);
     }
 
@@ -124,7 +124,7 @@ contract DataBrokerTest is Test {
         emit DataBroker.DataAccessDenied(requester, unregisteredUser, "creditTier", "Not registered", block.timestamp);
         
         vm.prank(requester);
-        vm.expectRevert("Not registered");
+        vm.expectRevert(DataBroker.UserNotRegistered.selector);
         dataBroker.getCreditTier(unregisteredUser);
     }
 
@@ -145,7 +145,7 @@ contract DataBrokerTest is Test {
         consentManager.changeStatus(user, consentID, ConsentManager.ConsentStatus.Revoked);
         
         // Should revert
-        vm.expectRevert("No valid consent");
+        vm.expectRevert(DataBroker.ConsentMissing.selector);
         vm.prank(requester);
         dataBroker.getCreditTier(user);
     }
@@ -192,7 +192,7 @@ contract DataBrokerTest is Test {
     }
 
     function test_GetIncomeBand_RevertIfNoConsent() public {
-        vm.expectRevert("No valid consent");
+        vm.expectRevert(DataBroker.ConsentMissing.selector);
         vm.prank(requester);
         dataBroker.getIncomeBand(user);
     }
@@ -202,14 +202,14 @@ contract DataBrokerTest is Test {
         emit DataBroker.DataAccessDenied(requester, user, "incomeBand", "No valid consent", block.timestamp);
         
         vm.prank(requester);
-        vm.expectRevert("No valid consent");
+        vm.expectRevert(DataBroker.ConsentMissing.selector);
         dataBroker.getIncomeBand(user);
     }
 
     function test_GetIncomeBand_RevertIfNotRegistered() public {
         address unregisteredUser = address(0x999);
         
-        vm.expectRevert("Not registered");
+        vm.expectRevert(DataBroker.UserNotRegistered.selector);
         vm.prank(requester);
         dataBroker.getIncomeBand(unregisteredUser);
     }
@@ -234,7 +234,7 @@ contract DataBrokerTest is Test {
         assertEq(uint8(tier), uint8(IdentityRegistry.CreditTier.MidGold));
         
         // otherRequester cannot access
-        vm.expectRevert("No valid consent");
+        vm.expectRevert(DataBroker.ConsentMissing.selector);
         vm.prank(otherRequester);
         dataBroker.getCreditTier(user);
     }
