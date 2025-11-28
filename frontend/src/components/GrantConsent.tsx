@@ -8,8 +8,10 @@ export function GrantConsent() {
   const { createConsent, isPending, isConfirming } = useConsentManager()
   const [requesterAddress, setRequesterAddress] = useState('')
   const [days, setDays] = useState(30)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
-  const handleGrant = (e: React.FormEvent) => {
+  const handleGrant = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!address || !requesterAddress) return
     
@@ -19,7 +21,14 @@ export function GrantConsent() {
       return
     }
 
-    createConsent(requesterAddress as `0x${string}`, address, days)
+    setError(null)
+    setSuccess(null)
+    try {
+      await createConsent(requesterAddress as `0x${string}`, address, days)
+      setSuccess('Consent created and granted')
+    } catch (err: any) {
+      setError(err?.message || 'Failed to grant consent')
+    }
   }
 
   return (
@@ -78,6 +87,8 @@ export function GrantConsent() {
             'Grant Consent'
           )}
         </button>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {success && <p className="text-sm text-emerald-700">{success}</p>}
       </form>
     </div>
   )

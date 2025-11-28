@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional
-from ..data_storage.models import FinancialData
+try:
+    from ..data_storage.models import FinancialData  # type: ignore
+except ImportError:
+    from data_storage.models import FinancialData  # type: ignore
 
 @dataclass
 class Summary:
