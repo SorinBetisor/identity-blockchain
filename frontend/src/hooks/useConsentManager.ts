@@ -1,9 +1,18 @@
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { readContract } from "@wagmi/core";
 import {
   CONTRACT_ADDRESSES,
   ConsentManagerABI,
   ConsentStatus,
 } from "../contracts";
+import { keccak256, encodePacked, getAddress } from "viem";
+import { config } from "../wagmi";
+
+function computeConsentId(requester: `0x${string}`, user: `0x${string}`) {
+  return keccak256(
+    encodePacked(["address", "address"], [getAddress(requester), getAddress(user)])
+  );
+}
 
 export function useConsentManager() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
@@ -14,19 +23,39 @@ export function useConsentManager() {
   // We need to pass the user's address to createConsent correctly.
   // I'll update the function signature to take userDID.
 
-  const createConsentWithAddress = (
+  const createConsentWithAddress = async (
     requesterDID: `0x${string}`,
     userDID: `0x${string}`,
     daysValid: number
   ) => {
+    const consentID = computeConsentId(requesterDID, userDID) as `0x${string}`;
+    const alreadyGranted = await readContract(config, {
+      address: CONTRACT_ADDRESSES.ConsentManager,
+      abi: ConsentManagerABI,
+      functionName: "isConsentGranted",
+      args: [userDID, requesterDID],
+    });
+    if (alreadyGranted) {
+      throw new Error("Consent already granted for this requester");
+    }
+
     const startDate = Math.floor(Date.now() / 1000);
     const endDate = startDate + daysValid * 24 * 60 * 60;
 
-    writeContract({
+    // Create consent
+    await writeContract({
       address: CONTRACT_ADDRESSES.ConsentManager,
       abi: ConsentManagerABI,
       functionName: "createConsent",
       args: [requesterDID, userDID, BigInt(startDate), BigInt(endDate)],
+    });
+
+    // Immediately grant it (second tx)
+    await writeContract({
+      address: CONTRACT_ADDRESSES.ConsentManager,
+      abi: ConsentManagerABI,
+      functionName: "changeStatus",
+      args: [userDID, consentID, ConsentStatus.Granted],
     });
   };
 

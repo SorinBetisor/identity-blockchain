@@ -1,0 +1,25 @@
+{
+  "userDID": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+  "assets": [
+    {
+      "assetID": "savings-1",
+      "assetType": "savings",
+      "value": 25000.0,
+      "ownershipPercentage": 100.0,
+      "lastUpdated": "2025-11-28T15:57:03.715203Z"
+    }
+  ],
+  "liabilities": [
+    {
+      "liabilityID": "card-1",
+      "liabilityType": "credit_card",
+      "amount": 1200.0,
+      "interestRate": 19.9,
+      "monthlyPayment": 100.0,
+      "dueDate": "2024-12-01",
+      "isOverdue": false,
+      "lastUpdated": "2025-11-28T15:57:03.715242Z"
+    }
+  ],
+  "lastUpdated": "2025-11-28T15:57:03.715259Z"
+}

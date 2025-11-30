@@ -6,8 +6,8 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, "..");
+const pythonCmd = process.env.PYTHON_EXEC || "python";
 
-// Colors for console output
 const colors = {
   reset: "\x1b[0m",
   bright: "\x1b[1m",
@@ -37,7 +37,6 @@ function runCommand(
     });
 
     if (waitForOutput) {
-      // For commands that need to wait for specific output
       proc.stdout?.on("data", (data: Buffer) => {
         const output = data.toString();
         if (waitForOutput.test(output)) {
@@ -86,25 +85,6 @@ function runCommandInBackground(
   return proc;
 }
 
-function waitForFile(filePath: string, timeout: number = 30000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const startTime = Date.now();
-    const checkInterval = 500;
-
-    const checkFile = () => {
-      if (fs.existsSync(filePath)) {
-        resolve();
-      } else if (Date.now() - startTime > timeout) {
-        reject(new Error(`Timeout waiting for file: ${filePath}`));
-      } else {
-        setTimeout(checkFile, checkInterval);
-      }
-    };
-
-    checkFile();
-  });
-}
-
 async function main() {
   log(`${colors.bright}${colors.green}Starting Identity Blockchain Development Environment...${colors.reset}\n`);
 
@@ -118,18 +98,17 @@ async function main() {
 
     // Wait for Hardhat node to be ready
     log(`${colors.yellow}Waiting for Hardhat node to initialize...${colors.reset}`);
-    await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds for node to start
-    log(`${colors.green}✓ Hardhat node should be ready${colors.reset}`);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+    log(`${colors.green}✅ Hardhat node should be ready${colors.reset}`);
 
     // 2. Compile contracts
     log(`\n${colors.yellow}Step 2: Compiling contracts...${colors.reset}`);
     await runCommand("npx", ["hardhat", "compile"]);
-    log(`${colors.green}✓ Contracts compiled${colors.reset}`);
+    log(`${colors.green}✅ Contracts compiled${colors.reset}`);
 
     // 3. Deploy contracts
     log(`\n${colors.yellow}Step 3: Deploying contracts to localhost...${colors.reset}`);
-    
-    // Remove old deployment if exists to force fresh deploy
+
     const deploymentDir = path.join(rootDir, "ignition/deployments/local-dev");
     if (fs.existsSync(deploymentDir)) {
       log("Removing old deployment...");
@@ -146,28 +125,32 @@ async function main() {
       "--deployment-id",
       "local-dev",
     ]);
-    log(`${colors.green}✓ Contracts deployed${colors.reset}`);
+    log(`${colors.green}✅ Contracts deployed${colors.reset}`);
 
     // 4. Update frontend config
     log(`\n${colors.yellow}Step 4: Updating frontend configuration...${colors.reset}`);
     await runCommand("npx", ["tsx", "scripts/update_frontend_config.ts"]);
-    log(`${colors.green}✓ Frontend configuration updated${colors.reset}`);
+    log(`${colors.green}✅ Frontend configuration updated${colors.reset}`);
 
-    // 5. Start frontend dev server
-    log(`\n${colors.yellow}Step 5: Starting frontend dev server...${colors.reset}`);
+    // 5. Start off-chain API server
+    log(`\n${colors.yellow}Step 5: Starting off-chain API server...${colors.reset}`);
+    const apiProc = runCommandInBackground(pythonCmd, ["off-chain/api/server.py"]);
+    processes.push(apiProc);
+
+    // 6. Start frontend dev server
+    log(`\n${colors.yellow}Step 6: Starting frontend dev server...${colors.reset}`);
     const frontendDir = path.join(rootDir, "frontend");
     const frontendDev = runCommandInBackground("npm", ["run", "dev"], frontendDir);
     processes.push(frontendDev);
 
-    // Wait a bit for frontend to start
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    log(`\n${colors.bright}${colors.green}✓ Development environment started!${colors.reset}`);
-    log(`${colors.green}  • Hardhat node: http://127.0.0.1:8545${colors.reset}`);
-    log(`${colors.green}  • Frontend: http://localhost:5173${colors.reset}`);
+    log(`\n${colors.bright}${colors.green}✅ Development environment started!${colors.reset}`);
+    log(`${colors.green}  🌐 Hardhat node: http://127.0.0.1:8545${colors.reset}`);
+    log(`${colors.green}  🧩 Off-chain API: http://127.0.0.1:8000${colors.reset}`);
+    log(`${colors.green}  🖥️ Frontend: http://localhost:5173${colors.reset}`);
     log(`\n${colors.yellow}Press Ctrl+C to stop all services${colors.reset}\n`);
 
-    // Handle cleanup on exit
     process.on("SIGINT", () => {
       log(`\n${colors.yellow}Shutting down services...${colors.reset}`);
       processes.forEach((proc) => {
@@ -180,12 +163,10 @@ async function main() {
       process.exit(0);
     });
 
-    // Keep the script running
     await new Promise(() => {});
   } catch (error) {
-    log(`\n${colors.red}✗ Error: ${error}${colors.reset}`, colors.red);
-    
-    // Cleanup on error
+    log(`\n${colors.red}❌ Error: ${error}${colors.reset}`, colors.red);
+
     processes.forEach((proc) => {
       try {
         proc.kill();
@@ -193,7 +174,7 @@ async function main() {
         // Ignore errors
       }
     });
-    
+
     process.exit(1);
   }
 }
@@ -202,4 +183,3 @@ main().catch((error) => {
   log(`\n${colors.red}Fatal error: ${error}${colors.reset}`, colors.red);
   process.exit(1);
 });
-

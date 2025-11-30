@@ -24,6 +24,7 @@ This project implements a blockchain-based identity and data consent management 
 - Node.js 22.10.0 or later (LTS recommended)
 - npm or yarn
 - A Web3 wallet (MetaMask recommended)
+- Python 3.10+ (for the FastAPI service)
 
 ## Quick Start
 
@@ -40,11 +41,20 @@ This single command will:
 2. Compile all smart contracts
 3. Deploy contracts to the local network
 4. Update frontend configuration with deployed contract addresses
-5. Start the frontend development server on port 5173
+5. Start the off-chain FastAPI service on port 8000 (Python, uses off-chain/data_services)
+6. Start the frontend development server on port 5173
 
 The script runs all services in the background and will keep them running until you press `Ctrl+C`.
 
-**Note:** Make sure port 8545 and 5173 are available before running the script.
+**Note:** Make sure port 8545, 8000, and 5173 are available before running the script.  
+You also need Python 3 with `fastapi`, `uvicorn`, `web3`, and `cryptography` installed:
+```bash
+# One-time setup (from repo root)
+python -m venv .venv
+.\.venv\Scripts\activate
+python -m pip install -r off-chain/requirements.txt
+```
+If your Python binary is not `python`, set `PYTHON_EXEC` before running `npm run dev` (e.g., `set PYTHON_EXEC=C:\Path\to\python.exe` on Windows).
 
 ### Manual Setup
 
@@ -88,7 +98,14 @@ After deployment, update the frontend with the new contract addresses:
 npx tsx scripts/update_frontend_config.ts
 ```
 
-#### 5. Start Frontend
+#### 5. Start API (Python/FastAPI)
+
+```bash
+# ensure venv is activated and requirements are installed
+python off-chain/api/server.py
+```
+
+#### 6. Start Frontend
 
 ```bash
 cd frontend
