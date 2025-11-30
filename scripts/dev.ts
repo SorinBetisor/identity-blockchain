@@ -6,7 +6,33 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.join(__dirname, "..");
-const pythonCmd = process.env.PYTHON_EXEC || "python";
+
+// Determine Python executable path
+function getPythonExecutable(): string {
+  // Check if PYTHON_EXEC is explicitly set
+  if (process.env.PYTHON_EXEC) {
+    return process.env.PYTHON_EXEC;
+  }
+
+  // Check for virtual environment
+  const venvDir = path.join(rootDir, ".venv");
+  if (fs.existsSync(venvDir)) {
+    if (process.platform === "win32") {
+      const venvPython = path.join(venvDir, "Scripts", "python.exe");
+      if (fs.existsSync(venvPython)) {
+        return venvPython;
+      }
+    } else {
+      const venvPython = path.join(venvDir, "bin", "python");
+      if (fs.existsSync(venvPython)) {
+        return venvPython;
+      }
+    }
+  }
+
+  // Fallback to system Python
+  return "python";
+}
 
 const colors = {
   reset: "\x1b[0m",
@@ -85,6 +111,53 @@ function runCommandInBackground(
   return proc;
 }
 
+async function ensurePythonEnvironment(): Promise<void> {
+  const venvDir = path.join(rootDir, ".venv");
+  const requirementsPath = path.join(rootDir, "off-chain", "requirements.txt");
+  const systemPython = process.env.PYTHON_EXEC || "python";
+
+  // Check if venv exists
+  const venvExists = fs.existsSync(venvDir);
+
+  if (!venvExists) {
+    log(`${colors.yellow}Virtual environment not found. Creating .venv...${colors.reset}`);
+    await runCommand(systemPython, ["-m", "venv", ".venv"]);
+    log(`${colors.green}✅ Virtual environment created${colors.reset}`);
+  }
+
+  // Determine Python executable to use
+  let venvPython: string;
+  if (process.platform === "win32") {
+    venvPython = path.join(venvDir, "Scripts", "python.exe");
+  } else {
+    venvPython = path.join(venvDir, "bin", "python");
+  }
+
+  // Check if requirements are installed by checking for fastapi
+  const checkFastApi = spawn(venvPython, ["-c", "import fastapi"], {
+    cwd: rootDir,
+    stdio: "pipe",
+    shell: process.platform === "win32",
+  });
+
+  const requirementsInstalled = await new Promise<boolean>((resolve) => {
+    checkFastApi.on("close", (code) => {
+      resolve(code === 0);
+    });
+    checkFastApi.on("error", () => {
+      resolve(false);
+    });
+  });
+
+  if (!requirementsInstalled) {
+    log(`${colors.yellow}Installing Python dependencies...${colors.reset}`);
+    await runCommand(venvPython, ["-m", "pip", "install", "-r", requirementsPath]);
+    log(`${colors.green}✅ Python dependencies installed${colors.reset}`);
+  } else {
+    log(`${colors.green}✅ Python dependencies already installed${colors.reset}`);
+  }
+}
+
 async function main() {
   log(`${colors.bright}${colors.green}Starting Identity Blockchain Development Environment...${colors.reset}\n`);
 
@@ -97,8 +170,8 @@ async function main() {
     processes.push(hardhatNode);
 
     // Wait for Hardhat node to be ready
-    log(`${colors.yellow}Waiting for Hardhat node to initialize...${colors.reset}`);
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    log(`${colors.yellow}Waiting (10 seconds) for Hardhat node to initialize...${colors.reset}`);
+    await new Promise((resolve) => setTimeout(resolve, 10000));
     log(`${colors.green}✅ Hardhat node should be ready${colors.reset}`);
 
     // 2. Compile contracts
@@ -132,13 +205,20 @@ async function main() {
     await runCommand("npx", ["tsx", "scripts/update_frontend_config.ts"]);
     log(`${colors.green}✅ Frontend configuration updated${colors.reset}`);
 
-    // 5. Start off-chain API server
-    log(`\n${colors.yellow}Step 5: Starting off-chain API server...${colors.reset}`);
-    const apiProc = runCommandInBackground(pythonCmd, ["off-chain/api/server.py"]);
+    // 5. Ensure Python virtual environment is set up
+    log(`\n${colors.yellow}Step 5: Setting up Python environment...${colors.reset}`);
+    await ensurePythonEnvironment();
+    
+    // Get the Python executable (will use venv if it exists)
+    const pythonExec = getPythonExecutable();
+
+    // 6. Start off-chain API server
+    log(`\n${colors.yellow}Step 6: Starting off-chain API server...${colors.reset}`);
+    const apiProc = runCommandInBackground(pythonExec, ["off-chain/api/server.py"]);
     processes.push(apiProc);
 
-    // 6. Start frontend dev server
-    log(`\n${colors.yellow}Step 6: Starting frontend dev server...${colors.reset}`);
+    // 7. Start frontend dev server
+    log(`\n${colors.yellow}Step 7: Starting frontend dev server...${colors.reset}`);
     const frontendDir = path.join(rootDir, "frontend");
     const frontendDev = runCommandInBackground("npm", ["run", "dev"], frontendDir);
     processes.push(frontendDev);

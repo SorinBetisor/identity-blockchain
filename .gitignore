@@ -27,3 +27,21 @@ frontend/node_modules
 
 # Foundry build output
 /out
+
+# Python virtual environment
+.venv
+venv
+env
+
+# Python caches
+/off-chain/__pycache__
+/off-chain/data_services/__pycache__
+/off-chain/data_storage/__pycache__
+/off-chain/data_services/data_storage/__pycache__
+/off-chain/data_storage/storage.pyc
+/off-chain/data_storage/storage.pyo
+/off-chain/data_storage/storage.pyd
+/off-chain/data_storage/storage.pyw
+/off-chain/data_storage/storage.pyz
+/off-chain/data_storage/storage.pyzw
+/off-chain/data_storage/storage.pyz

@@ -1,4 +1,4 @@
-import { http, createConfig } from "wagmi";
+import { http, createConfig, createStorage } from "wagmi";
 import { hardhat } from "wagmi/chains";
 import { mock } from "wagmi/connectors";
 import { privateKeyToAccount } from "viem/accounts";
@@ -21,4 +21,7 @@ export const config = createConfig({
   transports: {
     [hardhat.id]: http(),
   },
+  storage: createStorage({
+    storage: window.localStorage,
+  }),
 });

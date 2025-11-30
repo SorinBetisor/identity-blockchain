@@ -1,0 +1,242 @@
+@startuml
+
+skinparam classAttributeIconSize 0
+
+package "On-Chain Smart Contracts" #FFF4CC {
+class Identity {
+  - userDID : address
+  - creditTier : CreditTier
+  - incomeBand : IncomeBand
+  - dataPointer : bytes32
+}
+
+class IdentityRegistry {
+  - identities : mapping(address => Identity)
+  - validator : address
+  + register() : void
+  + updateProfile(creditTier : CreditTier, incomeBand : IncomeBand, userDID : address) : void
+  + updateDataPointer(dataPointer : bytes32) : void
+  + verifyAddressOwnership(userAddress : address, message : string, signature : bytes) : bool
+  + getCreditTier(userDID : address) : CreditTier
+  + getIncomeBand(userDID : address) : IncomeBand
+  + getIdentity(userDID : address) : (Identity, bool)
+}
+
+class Consent {
+  - consentID : bytes32
+  - requesterDID : address
+  - status : ConsentStatus
+  - startDate : uint96
+  - endDate : uint96
+}
+
+class ConsentManager {
+  - consents : mapping(address => mapping(bytes32 => Consent))
+  + createConsent(requesterDID : address, userDID : address, startDate : uint96, endDate : uint96) : void
+  + changeStatus(userDID : address, consentID : bytes32, newStatus : ConsentStatus) : void
+  + isConsentGranted(userDID : address, requesterDID : address) : bool
+}
+
+class DataBroker {
+  - consentManager : ConsentManager
+  - identityRegistry : IdentityRegistry
+  - rewardToken : DataSharingToken
+  - rewardPerAccess : uint256
+  - rewardClaimed : mapping(bytes32 => bool)
+  + getCreditTier(ownerDID : address) : CreditTier
+  + getIncomeBand(ownerDID : address) : IncomeBand
+}
+
+class DataSharingToken {
+  - name : string
+  - symbol : string
+  - decimals : uint8
+  - owner : address
+  - totalSupply : uint256
+  - balanceOf : mapping(address => uint256)
+  - allowance : mapping
+  - minters : mapping(address => bool)
+  + mint(to : address, amount : uint256) : void
+  + addMinter(minter : address) : void
+  + removeMinter(minter : address) : void
+  + transfer(to : address, amount : uint256) : bool
+  + approve(spender : address, amount : uint256) : bool
+  + transferFrom(from : address, to : address, amount : uint256) : bool
+  + transferOwnership(newOwner : address) : void
+}
+
+enum CreditTier {
+  None
+  LowBronze..HighPlatinum
+}
+
+enum IncomeBand {
+  None
+  upto25k..moreThan500k
+}
+
+enum ConsentStatus {
+  None
+  Granted
+  Requested
+  Revoked
+  Expired
+}
+}
+
+package "Off-Chain Services" #DFF0FF {
+class FinancialDataStorage {
+  - data_dir : Path
+  - encrypted : bool
+  - encryption_key : bytes
+  + save(financial_data : FinancialData) : bytes32
+  + load(user_did : str) : FinancialData
+  + verify_hash(user_did : str, expected_hash : bytes) : bool
+  + add_asset(user_did : str, asset : Asset) : bytes32
+  + add_liability(user_did : str, liability : Liability) : bytes32
+  + remove_asset(user_did : str, asset_id : str) : bytes32
+  + remove_liability(user_did : str, liability_id : str) : bytes32
+  + delete(user_did : str) : bool
+}
+
+class FinancialDataService {
+  - tier_thresholds : list
+  - income_bands : list
+  + compute_summary(financial_data, annual_income, total_credit_limit) : Summary
+  - _risk_score(net_worth, dti, utilization) : float
+  - _map_tier(score) : CreditTier
+  - _map_income_band(annual_income) : IncomeBand
+}
+
+class IdentityVerification {
+  - otp_ttl : int
+  - _otp_store : Dict
+  - _verifications : Dict
+  + generate_email_otp(address : str) : str
+  + verify_email_otp(address : str, otp : str) : bool
+  + record_national_id(address : str, id_number : str) : str
+  + is_verified(address : str) : bool
+}
+
+class DataSharingClient {
+  - w3 : Web3
+  - contracts : ContractDeployer
+  - storage : FinancialDataStorage
+  - financial_service : FinancialDataService
+  - user_directory : UserDirectory
+  + register_identity(private_key : str) : TxReceipt
+  + save_financial_profile(financial_data, user_private_key, ...) : dict
+  + validator_update_profile(financial_data, validator_private_key, ...) : dict
+  + create_consent(user_private_key, requester_address, ...) : TxReceipt
+  + grant_consent(user_private_key, requester_address) : TxReceipt
+  + revoke_consent(user_private_key, requester_address) : TxReceipt
+  + request_credit_tier(requester_private_key, owner_address) : dict
+  + request_income_band(requester_private_key, owner_address) : dict
+  + verify_data_integrity(user_address) : bool
+}
+
+class UserDirectory {
+  - _username_to_address : Dict
+  - _address_to_username : Dict
+  + register_username(username : str, address : str) : bool
+  + lookup_address(username : str) : str
+  + lookup_username(address : str) : str
+}
+
+class APIServer <<FastAPI>> {
+  + GET /identity/{user_address}
+  + POST /identity/register
+  + POST /financial/save
+  + POST /validator/update-profile
+  + GET /integrity/{user_address}
+  + POST /consent/grant
+  + POST /consent/revoke
+  + GET /consent/status
+  + POST /broker/credit-tier
+  + POST /broker/income-band
+  + POST /ownership/sign
+  + POST /ownership/verify
+}
+
+class ClientApplication <<Frontend>> {
+  + register_on_chain() : void
+  + upload_financial_data() : bytes32
+  + grant_consent(requester_address : address) : void
+  + revoke_consent(requester_address : address) : void
+  + view_credit_profile() : void
+  + view_access_logs() : void
+}
+}
+
+' On-chain relationships
+IdentityRegistry "1" --> "0..*" Identity : stores
+ConsentManager "1" --> "0..*" Consent : manages
+DataBroker --> ConsentManager : checks consent via
+DataBroker --> IdentityRegistry : reads credit tier/income
+DataBroker --> DataSharingToken : mints rewards to user
+
+' Off-chain relationships
+DataSharingClient --> FinancialDataStorage : stores/loads data
+DataSharingClient --> FinancialDataService : computes credit metrics
+DataSharingClient --> UserDirectory : username lookups
+DataSharingClient --> IdentityRegistry : register/updateDataPointer
+DataSharingClient --> ConsentManager : createConsent/changeStatus
+DataSharingClient --> DataBroker : request credit tier/income band
+APIServer --> DataSharingClient : orchestrates all operations
+
+' External actor relationships
+ClientApplication --> APIServer : HTTP requests
+Bank --> APIServer : requests data via broker endpoints
+Bank --> IdentityRegistry : verifyAddressOwnership()
+Validator --> DataSharingClient : updateProfile via impersonation
+Client --> ClientApplication : uses wallet
+
+' Cross-layer relationships
+FinancialDataStorage ..> IdentityRegistry : hash stored as dataPointer
+FinancialDataService ..> IdentityRegistry : maps to CreditTier/IncomeBand enums
+
+note right of IdentityRegistry
+  Stores publicly verifiable creditTier and incomeBand set by validator,
+  plus dataPointer hash pointing to encrypted off-chain financial data.
+  verifyAddressOwnership() proves the client controls their Ethereum address.
+  getIdentity() returns full profile + registration status in one call.
+end note
+
+note bottom of ConsentManager
+  Consent lifecycle: client creates consent with bank requester,
+  then grants/revokes via changeStatus(); DataBroker enforces isConsentGranted
+  before exposing IdentityRegistry summaries. Consent struct stored per user
+  in nested mapping: consents[userDID][consentID].
+end note
+
+note right of DataBroker
+  On first successful consent-checked access per requester/user pair,
+  DataBroker mints reward tokens to the data owner via DataSharingToken.
+  Tracks claimed rewards in rewardClaimed mapping to prevent duplicates.
+end note
+
+note bottom of FinancialDataStorage
+  Raw financial data (assets, liabilities, documents) remains off-chain,
+  encrypted per user. Saved hash feeds IdentityRegistry.updateDataPointer
+  so banks can optionally verify integrity by recomputing the hash.
+end note
+
+note right of DataSharingClient
+  Main orchestrator for off-chain operations. Combines storage,
+  financial calculations, and blockchain interactions into a
+  unified client interface. Used by the API server.
+end note
+
+note bottom of FinancialDataService
+  Computes credit metrics from financial data:
+  - Risk score (0-1000) based on net worth, DTI, utilization
+  - Maps score to CreditTier enum
+  - Maps annual income to IncomeBand enum
+end note
+
+legend right
+  |<#FFF4CC>| On-chain smart contracts / ledger state |
+  |<#DFF0FF>| Off-chain services / encrypted data |
+end legend
+
+@enduml

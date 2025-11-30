@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
-import { useAccount, usePublicClient } from 'wagmi'
+import { useEffect, useState, useCallback } from 'react'
+import { useAccount, usePublicClient, useWatchBlockNumber } from 'wagmi'
 import { parseAbiItem } from 'viem'
 import { CONTRACT_ADDRESSES, ConsentStatus } from '../contracts'
-import { Key, Clock, CheckCircle2, Loader2 } from 'lucide-react'
+import { Key, Clock, CheckCircle2, Loader2, ChevronDown, ChevronUp, Copy } from 'lucide-react'
 
 interface Consent {
   consentID: string
@@ -13,103 +13,143 @@ interface Consent {
   status: number
 }
 
-export function GrantedConsents() {
+interface GrantedConsentsProps {
+  refreshTrigger?: number
+}
+
+export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
   const { address } = useAccount()
   const publicClient = usePublicClient()
   const [consents, setConsents] = useState<Consent[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [expandedConsents, setExpandedConsents] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
+  const fetchConsents = useCallback(async () => {
     if (!address || !publicClient) return
 
-    const fetchConsents = async () => {
-      setIsLoading(true)
-      try {
-        // Fetch all ConsentCreated events for this user
-        const consentCreatedLogs = await publicClient.getLogs({
-          address: CONTRACT_ADDRESSES.ConsentManager,
-          event: parseAbiItem(
-            'event ConsentCreated(address indexed userDID, address indexed requesterDID, bytes32 indexed consentID, uint96 startDate, uint96 endDate, uint256 timestamp)'
-          ),
-          args: { userDID: address },
-          fromBlock: 'earliest',
-        })
+    setIsLoading(true)
+    try {
+      // Fetch all ConsentCreated events for this user
+      const consentCreatedLogs = await publicClient.getLogs({
+        address: CONTRACT_ADDRESSES.ConsentManager,
+        event: parseAbiItem(
+          'event ConsentCreated(address indexed userDID, address indexed requesterDID, bytes32 indexed consentID, uint96 startDate, uint96 endDate, uint256 timestamp)'
+        ),
+        args: { userDID: address },
+        fromBlock: 'earliest',
+      })
 
-        // Fetch all ConsentStatusChanged events to track status changes
-        const statusChangedLogs = await publicClient.getLogs({
-          address: CONTRACT_ADDRESSES.ConsentManager,
-          event: parseAbiItem(
-            'event ConsentStatusChanged(address indexed userDID, address indexed requesterDID, bytes32 indexed consentID, uint8 oldStatus, uint8 newStatus, uint256 timestamp)'
-          ),
-          args: { userDID: address },
-          fromBlock: 'earliest',
-        })
+      // Fetch all ConsentStatusChanged events to track status changes
+      const statusChangedLogs = await publicClient.getLogs({
+        address: CONTRACT_ADDRESSES.ConsentManager,
+        event: parseAbiItem(
+          'event ConsentStatusChanged(address indexed userDID, address indexed requesterDID, bytes32 indexed consentID, uint8 oldStatus, uint8 newStatus, uint256 timestamp)'
+        ),
+        args: { userDID: address },
+        fromBlock: 'earliest',
+      })
 
-        // Build a map of consentID -> latest status
-        const statusMap = new Map<string, number>()
-        statusChangedLogs.forEach((log) => {
-          const consentID = log.args.consentID as string
-          const newStatus = Number(log.args.newStatus)
-          statusMap.set(consentID, newStatus)
-        })
+      // Build a map of consentID -> latest status
+      const statusMap = new Map<string, number>()
+      statusChangedLogs.forEach((log) => {
+        const consentID = log.args.consentID as string
+        const newStatus = Number(log.args.newStatus)
+        statusMap.set(consentID, newStatus)
+      })
 
-        // Process consent created events
-        const currentTime = BigInt(Math.floor(Date.now() / 1000))
-        const processedConsents: Consent[] = consentCreatedLogs.map((log) => {
-          const consentID = log.args.consentID as string
-          const endDate = log.args.endDate as bigint
-          const startDate = log.args.startDate as bigint
-          
-          // Determine current status from status changes, default to Requested (as set in contract)
-          let status = statusMap.get(consentID) ?? ConsentStatus.Requested
-          
-          // Check if expired (regardless of status)
-          if (currentTime > endDate && status !== ConsentStatus.Revoked) {
-            status = ConsentStatus.Expired
-          }
+      // Process consent created events
+      const currentTime = BigInt(Math.floor(Date.now() / 1000))
+      const processedConsents: Consent[] = consentCreatedLogs.map((log) => {
+        const consentID = log.args.consentID as string
+        const endDate = log.args.endDate as bigint
+        const startDate = log.args.startDate as bigint
+        
+        // Determine current status from status changes, default to Requested (as set in contract)
+        let status = statusMap.get(consentID) ?? ConsentStatus.Requested
+        
+        // Check if expired (regardless of status)
+        if (currentTime > endDate && status !== ConsentStatus.Revoked) {
+          status = ConsentStatus.Expired
+        }
 
-          return {
-            consentID,
-            requesterDID: log.args.requesterDID as string,
-            startDate,
-            endDate,
-            timestamp: log.args.timestamp as bigint,
-            status,
-          }
-        })
+        return {
+          consentID,
+          requesterDID: log.args.requesterDID as string,
+          startDate,
+          endDate,
+          timestamp: log.args.timestamp as bigint,
+          status,
+        }
+      })
 
-        // Filter to show active consents:
-        // - Status is Granted (1), or
-        // - Status is Requested (2) and within valid time period (active)
-        const grantedConsents = processedConsents.filter((c) => {
-          const isActive = currentTime >= c.startDate && currentTime <= c.endDate
-          return (
-            (c.status === ConsentStatus.Granted && isActive) ||
-            (c.status === ConsentStatus.Requested && isActive)
-          )
-        })
+      // Filter to show active consents:
+      // - Status is Granted (1), or
+      // - Status is Requested (2) and within valid time period (active)
+      const grantedConsents = processedConsents.filter((c) => {
+        const isActive = currentTime >= c.startDate && currentTime <= c.endDate
+        return (
+          (c.status === ConsentStatus.Granted && isActive) ||
+          (c.status === ConsentStatus.Requested && isActive)
+        )
+      })
 
-        // Sort by most recent first
-        grantedConsents.sort((a, b) => {
-          if (b.timestamp > a.timestamp) return 1
-          if (b.timestamp < a.timestamp) return -1
-          return 0
-        })
+      // Sort by most recent first
+      grantedConsents.sort((a, b) => {
+        if (b.timestamp > a.timestamp) return 1
+        if (b.timestamp < a.timestamp) return -1
+        return 0
+      })
 
-        setConsents(grantedConsents)
-      } catch (error) {
-        console.error('Error fetching consents:', error)
-      } finally {
-        setIsLoading(false)
-      }
+      setConsents(grantedConsents)
+    } catch (error) {
+      console.error('Error fetching consents:', error)
+    } finally {
+      setIsLoading(false)
     }
+  }, [address, publicClient])
+
+  // Watch for new blocks to refetch consents
+  useWatchBlockNumber({
+    onBlockNumber: () => {
+      if (address && publicClient) {
+        fetchConsents()
+      }
+    },
+  })
+
+  // Initial fetch and periodic refresh
+  useEffect(() => {
+    if (!address || !publicClient) return
 
     fetchConsents()
 
     // Refresh every 30 seconds to check for status changes
     const interval = setInterval(fetchConsents, 30000)
     return () => clearInterval(interval)
-  }, [address, publicClient])
+  }, [address, publicClient, fetchConsents])
+
+  // Refetch when refreshTrigger changes (triggered from GrantConsent)
+  useEffect(() => {
+    if (refreshTrigger && address && publicClient) {
+      fetchConsents()
+    }
+  }, [refreshTrigger, address, publicClient, fetchConsents])
+
+  const toggleExpand = (consentID: string) => {
+    setExpandedConsents((prev) => {
+      const next = new Set(prev)
+      if (next.has(consentID)) {
+        next.delete(consentID)
+      } else {
+        next.add(consentID)
+      }
+      return next
+    })
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+  }
 
   const formatDate = (timestamp: bigint) => {
     const date = new Date(Number(timestamp) * 1000)
@@ -117,6 +157,20 @@ export function GrantedConsents() {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const formatFullDate = (timestamp: bigint) => {
+    const date = new Date(Number(timestamp) * 1000)
+    return date.toLocaleString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
     })
   }
 
@@ -131,7 +185,15 @@ export function GrantedConsents() {
     return Math.ceil(diff / (24 * 60 * 60))
   }
 
-  if (isLoading) {
+  const getDuration = (startDate: bigint, endDate: bigint) => {
+    const start = Number(startDate)
+    const end = Number(endDate)
+    const diff = end - start
+    const days = Math.floor(diff / (24 * 60 * 60))
+    return days
+  }
+
+  if (isLoading && consents.length === 0) {
     return (
       <div className="glass p-6 rounded-xl animate-fade-in" style={{ animationDelay: '0.3s' }}>
         <div className="flex items-center gap-2 mb-6">
@@ -171,12 +233,14 @@ export function GrantedConsents() {
         <div className="space-y-3">
           {consents.map((consent) => {
             const daysRemaining = getDaysRemaining(consent.endDate)
+            const isExpanded = expandedConsents.has(consent.consentID)
+            const duration = getDuration(consent.startDate, consent.endDate)
             return (
               <div
                 key={consent.consentID}
                 className="p-4 bg-gray-50/50 border border-gray-200 rounded-lg hover:border-green-300 transition-colors"
               >
-                <div className="flex items-start justify-between mb-2">
+                <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -195,7 +259,66 @@ export function GrantedConsents() {
                         </span>
                       )}
                     </div>
+                    {isExpanded && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">Full Address:</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-gray-900">{consent.requesterDID}</span>
+                            <button
+                              onClick={() => copyToClipboard(consent.requesterDID)}
+                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              title="Copy address"
+                            >
+                              <Copy className="w-3 h-3 text-gray-500" />
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">Duration:</span>
+                          <span className="font-medium text-gray-900">{duration} days</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">Start Date:</span>
+                          <span className="font-medium text-gray-900">
+                            {formatFullDate(consent.startDate)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">End Date:</span>
+                          <span className="font-medium text-gray-900">
+                            {formatFullDate(consent.endDate)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-500">Consent ID:</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-gray-900 text-[10px]">
+                              {consent.consentID.slice(0, 10)}...{consent.consentID.slice(-8)}
+                            </span>
+                            <button
+                              onClick={() => copyToClipboard(consent.consentID)}
+                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              title="Copy consent ID"
+                            >
+                              <Copy className="w-3 h-3 text-gray-500" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  <button
+                    onClick={() => toggleExpand(consent.consentID)}
+                    className="ml-4 p-1.5 hover:bg-gray-200 rounded transition-colors"
+                    title={isExpanded ? 'Collapse' : 'Expand'}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-gray-500" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                    )}
+                  </button>
                 </div>
               </div>
             )
@@ -205,4 +328,3 @@ export function GrantedConsents() {
     </div>
   )
 }
-

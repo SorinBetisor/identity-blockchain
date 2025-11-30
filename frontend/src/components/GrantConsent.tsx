@@ -1,15 +1,36 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useConsentManager } from '../hooks/useConsentManager'
 import { Key, Calendar, Loader2 } from 'lucide-react'
 
-export function GrantConsent() {
+interface GrantConsentProps {
+  onConsentGranted?: () => void
+}
+
+export function GrantConsent({ onConsentGranted }: GrantConsentProps = {}) {
   const { address } = useAccount()
-  const { createConsent, isPending, isConfirming } = useConsentManager()
+  const { createConsent, isPending, isConfirming, isConfirmed } = useConsentManager()
   const [requesterAddress, setRequesterAddress] = useState('')
   const [days, setDays] = useState(30)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  // Clear form and show success when consent is confirmed
+  useEffect(() => {
+    if (isConfirmed) {
+      setSuccess('Consent created and granted successfully!')
+      setRequesterAddress('')
+      setDays(30)
+      setError(null)
+      // Trigger refresh of GrantedConsents
+      if (onConsentGranted) {
+        onConsentGranted()
+      }
+      // Clear success message after 5 seconds
+      const timer = setTimeout(() => setSuccess(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [isConfirmed, onConsentGranted])
 
   const handleGrant = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -17,7 +38,7 @@ export function GrantConsent() {
     
     // Basic address validation
     if (!requesterAddress.startsWith('0x') || requesterAddress.length !== 42) {
-      alert('Invalid address format')
+      setError('Invalid address format')
       return
     }
 
@@ -25,7 +46,6 @@ export function GrantConsent() {
     setSuccess(null)
     try {
       await createConsent(requesterAddress as `0x${string}`, address, days)
-      setSuccess('Consent created and granted')
     } catch (err: any) {
       setError(err?.message || 'Failed to grant consent')
     }
