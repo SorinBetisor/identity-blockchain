@@ -26,6 +26,36 @@ This project implements a blockchain-based identity and data consent management 
 - A Web3 wallet (MetaMask recommended)
 - Python 3.10+ (for the FastAPI service)
 
+### Installation
+
+Before running the project, install dependencies in all required directories:
+
+**1. Install root dependencies (Hardhat, contracts, etc.):**
+```bash
+npm install
+```
+
+**2. Install frontend dependencies:**
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+**3. Install Python dependencies:**
+```bash
+# Option A: Using system Python
+pip install -r off-chain/requirements.txt
+
+# Option B: Using virtual environment (recommended)
+python -m venv .venv
+# On Windows:
+.\.venv\Scripts\activate
+# On Linux/Mac:
+source .venv/bin/activate
+pip install -r off-chain/requirements.txt
+```
+
 ## Quick Start
 
 ### Development Environment
@@ -46,14 +76,8 @@ This single command will:
 
 The script runs all services in the background and will keep them running until you press `Ctrl+C`.
 
-**Note:** Make sure port 8545, 8000, and 5173 are available before running the script.  
-You also need Python 3 with `fastapi`, `uvicorn`, `web3`, and `cryptography` installed:
-```bash
-# One-time setup (from repo root)
-python -m venv .venv
-.\.venv\Scripts\activate
-python -m pip install -r off-chain/requirements.txt
-```
+**Note:** Make sure port 8545, 8000, and 5173 are available before running the script.
+
 If your Python binary is not `python`, set `PYTHON_EXEC` before running `npm run dev` (e.g., `set PYTHON_EXEC=C:\Path\to\python.exe` on Windows).
 
 ### Manual Setup

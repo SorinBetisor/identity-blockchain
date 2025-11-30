@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { IdentityCard } from '../components/IdentityCard'
 import { GrantConsent } from '../components/GrantConsent'
 import { RevokeConsent } from '../components/RevokeConsent'
@@ -9,6 +10,13 @@ import { BankAccess } from '../components/BankAccess'
 import { TokenRewards } from '../components/TokenRewards'
 
 export function BorrowerDashboard() {
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+
+  const handleConsentGranted = () => {
+    // Trigger refresh of GrantedConsents
+    setRefreshTrigger((prev) => prev + 1)
+  }
+
   return (
     <div className="space-y-8">
       <div className="animate-fade-in">
@@ -20,12 +28,12 @@ export function BorrowerDashboard() {
         <IdentityCard />
         
         <div>
-          <GrantConsent />
+          <GrantConsent onConsentGranted={handleConsentGranted} />
           <RevokeConsent />
         </div>
       </div>
 
-      <GrantedConsents />
+      <GrantedConsents refreshTrigger={refreshTrigger} />
 
       <TokenRewards />
 

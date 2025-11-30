@@ -1,11 +1,19 @@
+import { useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { useIdentityRegistry, formatCreditTier, formatIncomeBand } from '../hooks/useIdentityRegistry'
 import { User, Shield, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 export function IdentityCard() {
   const { address } = useAccount()
-  const { register, useIdentity, isPending, isConfirming } = useIdentityRegistry()
-  const { data: identity, isLoading } = useIdentity(address)
+  const { register, useIdentity, isPending, isConfirming, isConfirmed } = useIdentityRegistry()
+  const { data: identity, isLoading, refetch } = useIdentity(address)
+
+  // Refetch identity data when registration transaction is confirmed
+  useEffect(() => {
+    if (isConfirmed && address) {
+      refetch()
+    }
+  }, [isConfirmed, address, refetch])
 
   if (!address) {
     return (
