@@ -1,10 +1,10 @@
 import { WalletConnect } from './WalletConnect'
-import { LayoutDashboard, ShieldCheck, History } from 'lucide-react'
+import { LayoutDashboard, ShieldCheck, History, ShieldPlus, Building2 } from 'lucide-react'
 
 interface LayoutProps {
   children: React.ReactNode
-  currentView: 'dashboard' | 'audit-log'
-  onNavigate: (view: 'dashboard' | 'audit-log') => void
+  currentView: 'dashboard' | 'validator' | 'bank' | 'audit-log'
+  onNavigate: (view: 'dashboard' | 'validator' | 'bank' | 'audit-log') => void
 }
 
 export function Layout({ children, currentView, onNavigate }: LayoutProps) {
@@ -38,6 +38,28 @@ export function Layout({ children, currentView, onNavigate }: LayoutProps) {
               >
                 <LayoutDashboard className="w-5 h-5" />
                 Dashboard
+              </button>
+              <button
+                onClick={() => onNavigate('validator')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  currentView === 'validator'
+                    ? 'text-blue-600 bg-blue-50 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <ShieldPlus className="w-5 h-5" />
+                Validator
+              </button>
+              <button
+                onClick={() => onNavigate('bank')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  currentView === 'bank'
+                    ? 'text-blue-600 bg-blue-50 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Building2 className="w-5 h-5" />
+                Bank
               </button>
               <button
                 onClick={() => onNavigate('audit-log')}

@@ -2,15 +2,18 @@ import { useState } from 'react'
 import { Layout } from './components/Layout'
 import { BorrowerDashboard } from './pages/BorrowerDashboard'
 import { AuditLog } from './components/AuditLog'
+import { ValidatorDashboard } from './pages/ValidatorDashboard'
+import { BankDashboard } from './pages/BankDashboard'
 
 function App() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'audit-log'>('dashboard')
+  const [currentView, setCurrentView] = useState<'dashboard' | 'validator' | 'bank' | 'audit-log'>('dashboard')
 
   return (
     <Layout currentView={currentView} onNavigate={setCurrentView}>
-      {currentView === 'dashboard' ? (
-        <BorrowerDashboard />
-      ) : (
+      {currentView === 'dashboard' && <BorrowerDashboard />}
+      {currentView === 'validator' && <ValidatorDashboard />}
+      {currentView === 'bank' && <BankDashboard />}
+      {currentView === 'audit-log' && (
         <div className="space-y-6">
           <div className="animate-fade-in">
             <h1 className="text-3xl font-bold text-gray-900">Activity Log</h1>
