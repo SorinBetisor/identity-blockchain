@@ -1,0 +1,102 @@
+@startuml
+
+left to right direction
+title On-Chain Smart Contracts Architecture
+
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FFFEF5
+skinparam classFontSize 11
+skinparam class {
+  BackgroundColor #FFF4CC
+  BorderColor #B8860B
+  ArrowColor #B8860B
+}
+
+together {
+  class Identity <<struct>> {
+    userDID : address
+    creditTier : CreditTier
+    incomeBand : IncomeBand
+    dataPointer : bytes32
+  }
+
+  class Consent <<struct>> {
+    consentID : bytes32
+    requesterDID : address
+    status : ConsentStatus
+    startDate : uint96
+    endDate : uint96
+  }
+
+  enum CreditTier {
+    None
+    Bronze (Low/Mid/High)
+    Silver (Low/Mid/High)
+    Gold (Low/Mid/High)
+    Platinum (Low/Mid/High)
+  }
+
+  enum IncomeBand {
+    None
+    upto25k..upto500k
+    moreThan500k
+  }
+
+  enum ConsentStatus {
+    None
+    Granted
+    Requested
+    Revoked
+    Expired
+  }
+}
+
+class IdentityRegistry <<contract>> {
+  identities : mapping
+  validator : address
+  __
+  + register()
+  + updateProfile(tier, band, user)
+  + updateDataPointer(hash)
+  + verifyAddressOwnership()
+  + getCreditTier() / getIncomeBand()
+  + getIdentity()
+}
+
+class ConsentManager <<contract>> {
+  consents : mapping
+  __
+  + createConsent(requester, user, start, end)
+  + changeStatus(user, id, status)
+  + isConsentGranted(user, requester)
+}
+
+class DataBroker <<contract>> {
+  consentManager
+  identityRegistry
+  rewardToken
+  rewardPerAccess
+  rewardClaimed : mapping
+  __
+  + getCreditTier(owner)
+  + getIncomeBand(owner)
+}
+
+class DataSharingToken <<contract>> {
+  name / symbol / decimals
+  owner / totalSupply
+  balanceOf / allowance
+  minters : mapping
+  __
+  + mint(to, amount)
+  + addMinter() / removeMinter()
+  + transfer() / approve() / transferFrom()
+}
+
+IdentityRegistry --> Identity : stores
+ConsentManager --> Consent : manages
+DataBroker --> ConsentManager : checks
+DataBroker --> IdentityRegistry : reads
+DataBroker --> DataSharingToken : mints
+
+@enduml

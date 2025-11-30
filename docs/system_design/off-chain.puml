@@ -1,0 +1,132 @@
+@startuml
+
+left to right direction
+title Off-Chain Services Architecture
+
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #F5FAFF
+skinparam classFontSize 10
+skinparam class {
+  BackgroundColor #DFF0FF
+  BorderColor #4682B4
+  ArrowColor #4682B4
+}
+
+together {
+  class FinancialData <<dataclass>> {
+    userDID : str
+    assets : List[Asset]
+    liabilities : List[Liability]
+    metadata : Dict
+  }
+
+  class Asset <<dataclass>> {
+    assetID / assetType
+    value / ownershipPercentage
+    metadata : Dict
+  }
+
+  class Liability <<dataclass>> {
+    liabilityID / liabilityType
+    amount / interestRate
+    monthlyPayment / dueDate
+    isOverdue : bool
+  }
+
+  class Summary <<dataclass>> {
+    net_worth / total_assets
+    total_liabilities
+    dti / utilization
+    risk_score
+    credit_tier / income_band
+  }
+}
+
+class FinancialDataStorage {
+  data_dir / encrypted
+  encryption_key / cipher
+  __
+  + save(data) / load(user_did)
+  + verify_hash() / calculate_file_hash()
+  + add_asset() / remove_asset()
+  + add_liability() / remove_liability()
+}
+
+class FinancialDataService {
+  tier_thresholds
+  income_bands
+  __
+  + compute_summary(data, income, credit_limit)
+  - _risk_score() / _map_tier() / _map_income_band()
+}
+
+class UserDirectory {
+  _username_to_address
+  _address_to_username
+  __
+  + register_username()
+  + lookup_address() / lookup_username()
+}
+
+class IdentityVerification {
+  otp_ttl / _otp_store
+  _verifications
+  __
+  + generate_email_otp() / verify_email_otp()
+  + record_national_id() / is_verified()
+}
+
+class DataSharingClient {
+  w3 : Web3
+  contracts / storage
+  financial_service / user_directory
+  __
+  + register_identity() / get_identity()
+  + save_financial_profile()
+  + verify_data_integrity()
+  + create_consent() / grant_consent() / revoke_consent()
+  + request_credit_tier() / request_income_band()
+  + validator_update_profile()
+}
+
+class ContractDeployer {
+  identity_registry
+  consent_manager
+  data_broker
+  data_sharing_token
+  __
+  + load_from_deployment()
+}
+
+class APIServer <<FastAPI>> {
+  /identity/* endpoints
+  /financial/* endpoints
+  /consent/* endpoints
+  /broker/* endpoints
+  /validator/* endpoints
+  /ownership/* endpoints
+}
+
+class ClientApplication <<React>> {
+  WalletConnect / IdentityCard
+  OffchainDataForm
+  GrantConsent / RevokeConsent
+  BankAccess / TokenRewards
+  __
+  useIdentityRegistry()
+  useConsentManager()
+  useTokenBalance()
+}
+
+FinancialDataStorage --> FinancialData : stores
+FinancialDataStorage --> Asset
+FinancialDataStorage --> Liability
+FinancialDataService --> Summary : produces
+DataSharingClient --> FinancialDataStorage
+DataSharingClient --> FinancialDataService
+DataSharingClient --> UserDirectory
+DataSharingClient --> ContractDeployer
+APIServer --> DataSharingClient : orchestrates
+ClientApplication --> APIServer : HTTP
+
+@enduml

@@ -1,117 +1,108 @@
 @startuml
 
-' Data Model Diagram - Separated from Smart Contract Design
-' This diagram focuses on the data structures and relationships
+left to right direction
+title Data Model
 
 skinparam classAttributeIconSize 0
-
-' --- Core Data Entities ---
-
-class UserProfile {
-  - userDID: address
-  - hashedEmail: bytes32
-  - hashedNationalID: bytes32
-  - creditTier: string
-  - riskScore: uint256
-  - incomeBand: string
-  - netWorth: uint256
-  - dataPointer: bytes32
-  - isActive: bool
-  - registrationDate: uint256
+skinparam backgroundColor #FFFEF5
+skinparam classFontSize 10
+skinparam class {
+  BackgroundColor #FFF4CC
+  BorderColor #B8860B
+  ArrowColor #B8860B
 }
 
-class Consent {
-  - consentID: bytes32
-  - ownerDID: address
-  - requesterID: address
-  - dataTypes: string[]
-  - startDate: uint256
-  - endDate: uint256
-  - status: ConsentStatus
-  - tokenReward: uint256
+package "On-Chain (Solidity)" #FFF4CC {
+  class Identity <<struct>> {
+    userDID : address
+    creditTier : CreditTier
+    incomeBand : IncomeBand
+    dataPointer : bytes32
+  }
+
+  class Consent <<struct>> {
+    consentID : bytes32
+    requesterDID : address
+    status : ConsentStatus
+    startDate : uint96
+    endDate : uint96
+  }
+
+  enum CreditTier {
+    None
+    LowBronze..HighPlatinum
+  }
+
+  enum IncomeBand {
+    None
+    upto25k..moreThan500k
+  }
+
+  enum ConsentStatus {
+    None
+    Granted
+    Requested
+    Revoked
+    Expired
+  }
 }
 
-enum ConsentStatus {
-  Active
-  Revoked
-  Expired
+package "Off-Chain (Python)" #DFF0FF {
+  class FinancialData <<dataclass>> {
+    userDID : str
+    assets : List[Asset]
+    liabilities : List[Liability]
+    lastUpdated : str
+    metadata : dict
+  }
+
+  class Asset <<dataclass>> {
+    assetID : str
+    assetType : AssetType
+    value : float
+    ownershipPercentage : float
+    lastUpdated : str
+    metadata : dict
+  }
+
+  class Liability <<dataclass>> {
+    liabilityID : str
+    liabilityType : LiabilityType
+    amount : float
+    interestRate : float
+    monthlyPayment : float
+    dueDate : str
+    isOverdue : bool
+    lastUpdated : str
+    metadata : dict
+  }
+
+  enum AssetType {
+    savings
+    checking
+    investment
+    property
+    vehicle
+    other
+  }
+
+  enum LiabilityType {
+    credit_card
+    mortgage
+    auto_loan
+    personal_loan
+    student_loan
+    other
+  }
 }
 
-class AccessLog {
-  - logID: bytes32
-  - timestamp: uint256
-  - eventType: string
-  - actorDID: address
-  - targetDID: address
-  - dataType: string
-  - success: bool
-  - details: string
-}
-
-' --- Off-Chain Data Structures ---
-
-class FinancialData {
-  - userDID: address
-  - assets: Asset[]
-  - liabilities: Liability[]
-  - lastUpdated: timestamp
-}
-
-class Asset {
-  - assetID: string
-  - assetType: string
-  - value: number
-  - ownershipPercentage: number
-  - lastUpdated: timestamp
-}
-
-class Liability {
-  - liabilityID: string
-  - liabilityType: string
-  - amount: number
-  - interestRate: number
-  - monthlyPayment: number
-  - dueDate: timestamp
-  - isOverdue: bool
-  - lastUpdated: timestamp
-}
-
-' --- Relationships ---
-
-UserProfile "1" -- "0..*" Consent : grants >
-UserProfile "1" -- "0..*" AccessLog : generates >
-Consent "1" -- "1" ConsentStatus : has status >
-FinancialData "1" -- "0..*" Asset : contains >
-FinancialData "1" -- "0..*" Liability : contains >
-UserProfile "1" -- "1" FinancialData : references via dataPointer >
-
-note right of UserProfile
-  **On-Chain Storage**
-  - Stored in IdentityRegistry contract
-  - Public attributes: creditTier, riskScore
-  - Hashed attributes: email, nationalID
-end note
-
-note right of FinancialData
-  **Off-Chain Storage**
-  - Stored locally as JSON file
-  - Encrypted before storage
-  - Hash stored in UserProfile.dataPointer
-end note
-
-note right of Consent
-  **On-Chain Storage**
-  - Stored in ConsentManager contract
-  - Immutable once created
-  - Can be revoked by owner
-end note
-
-note right of AccessLog
-  **On-Chain Storage**
-  - Stored in DataSharing contract
-  - Immutable (cannot be deleted)
-  - Tracks all access attempts
-end note
+Identity "1" -- "1" FinancialData : dataPointer\n(hash reference)
+Identity --> CreditTier
+Identity --> IncomeBand
+Consent --> ConsentStatus
+FinancialData "1" *-- "0..*" Asset
+FinancialData "1" *-- "0..*" Liability
+Asset --> AssetType
+Liability --> LiabilityType
 
 @enduml
-
