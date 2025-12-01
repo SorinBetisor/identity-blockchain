@@ -55,7 +55,17 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
       })
 
       const currentTime = BigInt(Math.floor(Date.now() / 1000))
-      const processedConsents: Consent[] = consentCreatedLogs.map((log) => {
+      const latestCreated = new Map<string, typeof consentCreatedLogs[number]>()
+      consentCreatedLogs.forEach((log) => {
+        const consentID = log.args.consentID as string
+        const ts = log.args.timestamp as bigint
+        const existing = latestCreated.get(consentID)
+        if (!existing || (existing.args.timestamp as bigint) < ts) {
+          latestCreated.set(consentID, log)
+        }
+      })
+
+      const processedConsents: Consent[] = Array.from(latestCreated.values()).map((log) => {
         const consentID = log.args.consentID as string
         const endDate = log.args.endDate as bigint
         const startDate = log.args.startDate as bigint
