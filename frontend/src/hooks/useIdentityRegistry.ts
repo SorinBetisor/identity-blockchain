@@ -19,10 +19,8 @@ export function useIdentityRegistry() {
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
     useWaitForTransactionReceipt({ hash });
 
-  // Refetch identity data when registration is confirmed
   useEffect(() => {
     if (isConfirmed && hash) {
-      // Invalidate and refetch identity queries
       queryClient.invalidateQueries({
         queryKey: [
           "readContract",
@@ -51,7 +49,6 @@ export function useIdentityRegistry() {
       args: address ? [address] : undefined,
       query: {
         enabled: !!address,
-        // Refetch on window focus and reconnect
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
       },

@@ -263,3 +263,4 @@ main().catch((error) => {
   log(`\n${colors.red}Fatal error: ${error}${colors.reset}`, colors.red);
   process.exit(1);
 });
+

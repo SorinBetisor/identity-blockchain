@@ -29,7 +29,6 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
 
     setIsLoading(true)
     try {
-      // Fetch all ConsentCreated events for this user
       const consentCreatedLogs = await publicClient.getLogs({
         address: CONTRACT_ADDRESSES.ConsentManager,
         event: parseAbiItem(
@@ -39,7 +38,6 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
         fromBlock: 'earliest',
       })
 
-      // Fetch all ConsentStatusChanged events to track status changes
       const statusChangedLogs = await publicClient.getLogs({
         address: CONTRACT_ADDRESSES.ConsentManager,
         event: parseAbiItem(
@@ -49,7 +47,6 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
         fromBlock: 'earliest',
       })
 
-      // Build a map of consentID -> latest status
       const statusMap = new Map<string, number>()
       statusChangedLogs.forEach((log) => {
         const consentID = log.args.consentID as string
@@ -57,17 +54,14 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
         statusMap.set(consentID, newStatus)
       })
 
-      // Process consent created events
       const currentTime = BigInt(Math.floor(Date.now() / 1000))
       const processedConsents: Consent[] = consentCreatedLogs.map((log) => {
         const consentID = log.args.consentID as string
         const endDate = log.args.endDate as bigint
         const startDate = log.args.startDate as bigint
         
-        // Determine current status from status changes, default to Requested (as set in contract)
         let status = statusMap.get(consentID) ?? ConsentStatus.Requested
         
-        // Check if expired (regardless of status)
         if (currentTime > endDate && status !== ConsentStatus.Revoked) {
           status = ConsentStatus.Expired
         }
@@ -82,9 +76,6 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
         }
       })
 
-      // Filter to show active consents:
-      // - Status is Granted (1), or
-      // - Status is Requested (2) and within valid time period (active)
       const grantedConsents = processedConsents.filter((c) => {
         const isActive = currentTime >= c.startDate && currentTime <= c.endDate
         return (
@@ -93,7 +84,6 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
         )
       })
 
-      // Sort by most recent first
       grantedConsents.sort((a, b) => {
         if (b.timestamp > a.timestamp) return 1
         if (b.timestamp < a.timestamp) return -1
@@ -108,7 +98,6 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
     }
   }, [address, publicClient])
 
-  // Watch for new blocks to refetch consents
   useWatchBlockNumber({
     onBlockNumber: () => {
       if (address && publicClient) {
@@ -117,18 +106,15 @@ export function GrantedConsents({ refreshTrigger }: GrantedConsentsProps = {}) {
     },
   })
 
-  // Initial fetch and periodic refresh
   useEffect(() => {
     if (!address || !publicClient) return
 
     fetchConsents()
 
-    // Refresh every 30 seconds to check for status changes
     const interval = setInterval(fetchConsents, 30000)
     return () => clearInterval(interval)
   }, [address, publicClient, fetchConsents])
 
-  // Refetch when refreshTrigger changes (triggered from GrantConsent)
   useEffect(() => {
     if (refreshTrigger && address && publicClient) {
       fetchConsents()

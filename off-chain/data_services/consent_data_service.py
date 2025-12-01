@@ -60,19 +60,16 @@ class ConsentDataService:
         Returns:
             FinancialData if consent is granted, None otherwise
         """
-        # Resolve username to address
         user_address = self.user_directory.get_address(username)
         
         if user_address is None:
             raise ValueError(f"Username '{username}' not found")
         
-        # Check consent on-chain
         if not self._check_consent(user_address, requester_address):
             raise PermissionError(
                 f"Requester {requester_address} does not have consent from user '{username}'"
             )
         
-        # Load and return financial data
         return self.storage.load(user_address)
 
     def request_data_by_address(
@@ -90,13 +87,11 @@ class ConsentDataService:
         Returns:
             FinancialData if consent is granted, None otherwise
         """
-        # Check consent on-chain
         if not self._check_consent(user_address, requester_address):
             raise PermissionError(
                 f"Requester {requester_address} does not have consent from {user_address}"
             )
         
-        # Load and return financial data
         return self.storage.load(user_address)
 
     def _check_consent(self, user_address: str, requester_address: str) -> bool:
@@ -111,7 +106,6 @@ class ConsentDataService:
             True if consent is granted, False otherwise
         """
         try:
-            # Call isConsentGranted function on ConsentManager
             is_granted = self.consent_manager.functions.isConsentGranted(
                 self.w3.to_checksum_address(user_address),
                 self.w3.to_checksum_address(requester_address)
@@ -146,20 +140,16 @@ class ConsentDataService:
             }
         
         try:
-            # Generate consent ID
             consent_id = self.w3.solidity_keccak(
                 ['address', 'address'],
                 [requester_address, user_address]
             )
             
-            # Get consent details from contract
             consent = self.consent_manager.functions.consents(
                 self.w3.to_checksum_address(user_address),
                 consent_id
             ).call()
             
-            # Parse consent tuple (depends on your contract structure)
-            # Assuming: (consentID, requesterDID, status, startDate, endDate)
             status_map = {
                 0: "None",
                 1: "Granted",
@@ -177,7 +167,7 @@ class ConsentDataService:
                 "status": status_map.get(consent[2], "Unknown"),
                 "startDate": consent[3],
                 "endDate": consent[4],
-                "isGranted": consent[2] == 1  # Status.Granted
+                "isGranted": consent[2] == 1
             }
         except Exception as e:
             return {
@@ -234,22 +224,14 @@ class ConsentDataService:
         Returns:
             Transaction receipt
         """
-        # Resolve username to address
         user_address = self.user_directory.get_address(username)
         
         if user_address is None:
             raise ValueError(f"Username '{username}' not found")
         
         try:
-            # Build transaction to call ConsentManager.createConsent()
-            # Note: createConsent has onlyOwner modifier, so only the USER can call it
-            # For requester-initiated requests, you'd need a different function
-            # or call through DataBroker.requestConsent() instead
-            
-            # Get nonce
             nonce = self.w3.eth.get_transaction_count(requester_address)
             
-            # Build transaction
             transaction = self.consent_manager.functions.createConsent(
                 self.w3.to_checksum_address(requester_address),
                 self.w3.to_checksum_address(user_address),
@@ -262,16 +244,13 @@ class ConsentDataService:
                 'gasPrice': self.w3.eth.gas_price
             })
             
-            # Sign transaction
             signed_txn = self.w3.eth.account.sign_transaction(
                 transaction,
                 requester_private_key
             )
             
-            # Send transaction
             tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
             
-            # Wait for receipt
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
             
             return {
@@ -310,21 +289,17 @@ class ConsentDataService:
             raise ValueError(f"Username '{username}' not found")
         
         try:
-            # Generate consent ID
             consent_id = self.w3.solidity_keccak(
                 ['address', 'address'],
                 [requester_address, user_address]
             )
             
-            # Get nonce
             nonce = self.w3.eth.get_transaction_count(user_address)
             
-            # Build transaction to call ConsentManager.changeStatus()
-            # Status.Granted = 1
             transaction = self.consent_manager.functions.changeStatus(
                 self.w3.to_checksum_address(user_address),
                 consent_id,
-                1  # ConsentStatus.Granted
+                1
             ).build_transaction({
                 'from': self.w3.to_checksum_address(user_address),
                 'nonce': nonce,

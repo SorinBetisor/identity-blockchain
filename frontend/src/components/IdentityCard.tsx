@@ -8,7 +8,6 @@ export function IdentityCard() {
   const { register, useIdentity, isPending, isConfirming, isConfirmed } = useIdentityRegistry()
   const { data: identity, isLoading, refetch } = useIdentity(address)
 
-  // Refetch identity data when registration transaction is confirmed
   useEffect(() => {
     if (isConfirmed && address) {
       refetch()

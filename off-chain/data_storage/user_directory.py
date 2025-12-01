@@ -25,7 +25,6 @@ class UserDirectory:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.directory_file = self.data_dir / "user_directory.json"
         
-        # Load existing directory or create new
         self._load_directory()
 
     def _load_directory(self):
@@ -60,15 +59,12 @@ class UserDirectory:
         """
         username_lower = username.lower()
         
-        # Check if username already exists
         if username_lower in self.username_to_address:
             return False
         
-        # Validate address format
         if not user_address.startswith("0x") or len(user_address) != 42:
             raise ValueError("Invalid Ethereum address format")
         
-        # Register bidirectional mapping
         self.username_to_address[username_lower] = user_address
         self.address_to_username[user_address.lower()] = username_lower
         
@@ -113,18 +109,14 @@ class UserDirectory:
         old_lower = old_username.lower()
         new_lower = new_username.lower()
         
-        # Check if old username exists
         if old_lower not in self.username_to_address:
             return False
         
-        # Check if new username is already taken
         if new_lower in self.username_to_address and new_lower != old_lower:
             return False
         
-        # Get the address
         address = self.username_to_address[old_lower]
         
-        # Update mappings
         del self.username_to_address[old_lower]
         self.username_to_address[new_lower] = address
         self.address_to_username[address.lower()] = new_lower
@@ -149,7 +141,6 @@ class UserDirectory:
         
         address = self.username_to_address[username_lower]
         
-        # Remove both mappings
         del self.username_to_address[username_lower]
         del self.address_to_username[address.lower()]
         

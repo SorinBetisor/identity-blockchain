@@ -34,8 +34,8 @@ class Asset:
     """Individual asset entry"""
     assetID: str
     assetType: AssetType
-    value: float  # In base currency units
-    ownershipPercentage: float = 100.0  # 0-100
+    value: float
+    ownershipPercentage: float = 100.0
     lastUpdated: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     metadata: Optional[dict] = None
 
@@ -75,10 +75,10 @@ class Liability:
     """Individual liability entry"""
     liabilityID: str
     liabilityType: LiabilityType
-    amount: float  # Outstanding balance in base currency units
-    interestRate: float  # Annual interest rate as percentage (0-100)
-    monthlyPayment: float  # Monthly payment amount
-    dueDate: str  # date in ISO 8601 format
+    amount: float
+    interestRate: float
+    monthlyPayment: float
+    dueDate: str
     isOverdue: bool = False
     lastUpdated: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
     metadata: Optional[dict] = None
@@ -127,7 +127,7 @@ class Liability:
 @dataclass
 class FinancialData:
     """Complete financial data structure (assets and liabilities)"""
-    userDID: str  # Ethereum address (0x...)
+    userDID: str
     assets: list[Asset] = field(default_factory=list)
     liabilities: list[Liability] = field(default_factory=list)
     lastUpdated: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")

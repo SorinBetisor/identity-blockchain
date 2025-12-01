@@ -10,7 +10,6 @@ export function BorrowerDashboard() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const handleConsentGranted = () => {
-    // Trigger refresh of GrantedConsents
     setRefreshTrigger((prev) => prev + 1)
   }
 

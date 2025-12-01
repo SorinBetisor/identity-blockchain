@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from 'react'
 import { usePublicClient, useAccount } from 'wagmi'
 import { CONTRACT_ADDRESSES } from '../contracts'
@@ -34,35 +33,30 @@ export function AuditLog() {
           consentStatus,
           userRegistered
         ] = await Promise.all([
-          // 1. Data Access Granted
           publicClient.getLogs({
             address: CONTRACT_ADDRESSES.DataBroker,
             event: parseAbiItem('event DataAccessGranted(address indexed requesterDID, address indexed ownerDID, string dataType, uint256 timestamp)'),
             args: { ownerDID: address },
             fromBlock: 'earliest'
           }),
-          // 2. Data Access Denied
           publicClient.getLogs({
             address: CONTRACT_ADDRESSES.DataBroker,
             event: parseAbiItem('event DataAccessDenied(address indexed requesterDID, address indexed ownerDID, string dataType, string reason, uint256 timestamp)'),
             args: { ownerDID: address },
             fromBlock: 'earliest'
           }),
-          // 3. Consent Created
           publicClient.getLogs({
             address: CONTRACT_ADDRESSES.ConsentManager,
             event: parseAbiItem('event ConsentCreated(address indexed userDID, address indexed requesterDID, bytes32 indexed consentID, uint96 startDate, uint96 endDate, uint256 timestamp)'),
             args: { userDID: address },
             fromBlock: 'earliest'
           }),
-          // 4. Consent Status Changed (Revoked)
           publicClient.getLogs({
             address: CONTRACT_ADDRESSES.ConsentManager,
             event: parseAbiItem('event ConsentStatusChanged(address indexed userDID, address indexed requesterDID, bytes32 indexed consentID, uint8 oldStatus, uint8 newStatus, uint256 timestamp)'),
             args: { userDID: address },
             fromBlock: 'earliest'
           }),
-          // 5. User Registered
           publicClient.getLogs({
             address: CONTRACT_ADDRESSES.IdentityRegistry,
             event: parseAbiItem('event UserRegistered(address indexed userDID)'),
@@ -112,19 +106,13 @@ export function AuditLog() {
             type: 'Registered' as const,
             title: 'Identity Registered',
             details: 'User registered on IdentityRegistry',
-            timestamp: 0, // Block timestamp needed, defaulting to 0 or current for now if not available in event args (UserRegistered in ABI didn't have timestamp, checking ABI...)
+            timestamp: 0,
             hash: log.transactionHash,
             icon: UserPlus,
             color: 'text-blue-500'
           }))
         ].sort((a, b) => b.timestamp - a.timestamp)
 
-        // For UserRegistered, we might not have a timestamp in the event args based on previous ABI view. 
-        // If so, we might need to fetch block, but for now let's leave it or check ABI again.
-        // Checking ABI in contracts.ts... UserRegistered inputs: [{ indexed: true, name: "userDID", type: "address" }] -> No timestamp.
-        // We'll fetch block for UserRegistered or just put it at the bottom if 0. 
-        // Actually, let's fetch block for it.
-        
         if (userRegistered.length > 0) {
             const block = await publicClient.getBlock({ blockHash: userRegistered[0].blockHash })
             const regLog = formattedLogs.find(l => l.type === 'Registered')

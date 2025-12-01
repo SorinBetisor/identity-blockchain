@@ -10,21 +10,18 @@ class IdentityVerification:
         self._otp_store: Dict[str, Tuple[str, float]] = {}
         self._verifications: Dict[str, Dict[str, str]] = {}
 
-# Normalize Ethereum address to lowercase and make sure it starts with '0x'
     def _normalize(self, address: str) -> str:
         addr = address.lower()
         if not addr.startswith("0x") or len(addr) != 42:
             raise ValueError("Invalid address")
         return addr
 
-# Generate a 6-digit OTP for a given email address and store it with an expiration time
     def generate_email_otp(self, address: str) -> str:
         addr = self._normalize(address)
         otp = "".join(random.choices(string.digits, k=6))
         self._otp_store[addr] = (otp, time.time() + self.otp_ttl)
         return otp  
 
-# Verify the OTP and hash it if successful
     def verify_email_otp(self, address: str, otp: str) -> bool:
         addr = self._normalize(address)
         record = self._otp_store.get(addr)
@@ -38,7 +35,6 @@ class IdentityVerification:
         del self._otp_store[addr]
         return True
 
-# Hash and store the national ID
     def record_national_id(self, address: str, id_number: str) -> str:
         addr = self._normalize(address)
         id_hash = hashlib.sha256(id_number.encode()).hexdigest()

@@ -112,7 +112,7 @@ export const DataBrokerABI = [
     name: "getCreditTier",
     inputs: [{ name: "ownerDID", type: "address" }],
     outputs: [{ name: "", type: "uint8" }],
-    stateMutability: "nonpayable", // Not view because it emits events/mints tokens
+    stateMutability: "nonpayable",
   },
   {
     type: "function",

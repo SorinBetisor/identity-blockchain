@@ -13,8 +13,6 @@ export function RevokeConsent() {
     e.preventDefault()
     if (!address || !requesterAddress) return
 
-    // Calculate consent ID: keccak256(abi.encodePacked(requesterDID, userDID))
-    // Note: The contract uses abi.encodePacked(requesterDID, userDID)
     try {
       const consentID = keccak256(encodePacked(
         ['address', 'address'],

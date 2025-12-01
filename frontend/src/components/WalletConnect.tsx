@@ -7,12 +7,10 @@ export function WalletConnect() {
   const { connectors, connect, error } = useConnect()
   const { disconnect } = useDisconnect()
 
-  // Auto-connect to mock wallet if available and not connected
   useEffect(() => {
     if (!isConnected && connectors.length > 0) {
       const mockConnector = connectors.find((c) => c.id === 'mock')
       if (mockConnector) {
-        // Small delay to ensure wagmi is ready
         const timer = setTimeout(() => {
           connect({ connector: mockConnector })
         }, 100)

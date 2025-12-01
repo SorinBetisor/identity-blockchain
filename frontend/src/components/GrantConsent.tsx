@@ -15,18 +15,15 @@ export function GrantConsent({ onConsentGranted }: GrantConsentProps = {}) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  // Clear form and show success when consent is confirmed
   useEffect(() => {
     if (isConfirmed) {
       setSuccess('Consent created and granted successfully!')
       setRequesterAddress('')
       setDays(30)
       setError(null)
-      // Trigger refresh of GrantedConsents
       if (onConsentGranted) {
         onConsentGranted()
       }
-      // Clear success message after 5 seconds
       const timer = setTimeout(() => setSuccess(null), 5000)
       return () => clearTimeout(timer)
     }
@@ -36,7 +33,6 @@ export function GrantConsent({ onConsentGranted }: GrantConsentProps = {}) {
     e.preventDefault()
     if (!address || !requesterAddress) return
     
-    // Basic address validation
     if (!requesterAddress.startsWith('0x') || requesterAddress.length !== 42) {
       setError('Invalid address format')
       return

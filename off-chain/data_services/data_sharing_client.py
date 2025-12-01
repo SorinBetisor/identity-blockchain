@@ -22,7 +22,6 @@ from hexbytes import HexBytes
 from web3 import Web3
 from web3.contract import Contract
 
-# Import with fallbacks to support running as a script (no package context)
 try:
     from ..data_storage import FinancialData, FinancialDataStorage, UserDirectory  # type: ignore
     from .consent_data_service import ConsentDataService  # type: ignore
@@ -34,7 +33,6 @@ except ImportError:
     from data_services.financial_data_service import FinancialDataService, Summary  # type: ignore
     from data_services.identity_verification import IdentityVerification  # type: ignore
 
-# Enum order mirrors IdentityRegistry.sol
 CREDIT_TIERS = [
     "None",
     "LowBronze",
@@ -268,7 +266,6 @@ class DataSharingClient:
             user_directory=self.user_directory,
         )
 
-    # --- Transaction helpers ---
     def _send_transaction(self, tx_fn: Any, private_key: str, value: int = 0) -> Dict[str, Any]:
         account = Account.from_key(private_key)
         nonce = self.w3.eth.get_transaction_count(account.address)
@@ -318,7 +315,6 @@ class DataSharingClient:
         tx_hash = self.w3.eth.send_transaction(tx)
         return self.w3.eth.wait_for_transaction_receipt(tx_hash)
 
-    # --- Identity & verification ---
     def register_identity(self, user_private_key: str) -> Dict[str, Any]:
         """User registers themselves on-chain."""
         tx_fn = self.contracts.identity_registry.functions.register()
@@ -359,7 +355,6 @@ class DataSharingClient:
             "dataPointer": identity[3].hex(),
         }
 
-    # --- Financial data lifecycle ---
     def save_financial_profile(
         self,
         financial_data: FinancialData,
@@ -451,7 +446,6 @@ class DataSharingClient:
         receipt = self._send_transaction_impersonated(tx_fn, validator_address)
         return {"summary": summary, "updateProfileReceipt": receipt}
 
-    # --- Consent management ---
     def create_consent(
         self,
         user_private_key: str,
@@ -512,7 +506,6 @@ class DataSharingClient:
             _normalize_address(requester_address),
         ).call()
 
-    # --- Data access for banks/requesters ---
     def request_credit_tier(self, requester_private_key: str, owner_address: str) -> Dict[str, Any]:
         tx_fn = self.contracts.data_broker.functions.getCreditTier(_normalize_address(owner_address))
         receipt = self._send_transaction(tx_fn, requester_private_key)
@@ -560,7 +553,6 @@ class DataSharingClient:
             return self.consent_service.request_data_by_address(username_or_address, requester_address)
         return self.consent_service.request_data_by_username(username_or_address, requester_address)
 
-    # --- Identity verification (OTP + national ID hashing) ---
     def generate_email_otp(self, user_address: str) -> str:
         return self.identity_verification.generate_email_otp(user_address)
 
@@ -570,7 +562,6 @@ class DataSharingClient:
     def record_national_id(self, user_address: str, id_number: str) -> str:
         return self.identity_verification.record_national_id(user_address, id_number)
 
-    # --- Utility for demos ---
     @staticmethod
     def default_challenge(bank_name: str) -> str:
         nonce = datetime.utcnow().strftime("%Y%m%d%H%M%S")

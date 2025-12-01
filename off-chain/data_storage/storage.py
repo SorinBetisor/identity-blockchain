@@ -54,7 +54,6 @@ class FinancialDataStorage:
         
         if encrypted and encryption_key is None:
             self.encryption_key = Fernet.generate_key()
-            # ! in production, this key would be stored in an env
             print(f"WARNING: Generated new encryption key. Store this securely: {base64.b64encode(self.encryption_key).decode()}")
         
         if encrypted:
@@ -62,7 +61,6 @@ class FinancialDataStorage:
 
     def _get_file_path(self, user_did: str) -> Path:
         """Get file path for a user's financial data"""
-        # sanitize userDID for filename (remove 0x prefix)
         filename = user_did[2:] if user_did.startswith("0x") else user_did
         return self.data_dir / f"{filename}.json"
 
@@ -78,7 +76,6 @@ class FinancialDataStorage:
         """
         file_path = self._get_file_path(financial_data.userDID)
         
-        # Convert to JSON
         json_data = json.dumps(financial_data.to_dict(), indent=2)
         json_bytes = json_data.encode('utf-8')
         
@@ -88,8 +85,6 @@ class FinancialDataStorage:
         with open(file_path, 'wb') as f:
             f.write(json_bytes)
         
-        # Calculate hash of original JSON (before encryption)
-        # this hash is what gets stored on-chain as dataPointer
         data_hash = hashlib.sha256(json_data.encode('utf-8')).digest()
         
         return data_hash
@@ -109,15 +104,12 @@ class FinancialDataStorage:
         if not file_path.exists():
             return None
         
-        # Read file
         with open(file_path, 'rb') as f:
             json_bytes = f.read()
         
-        # Decrypt if enabled
         if self.encrypted:
             json_bytes = self.cipher.decrypt(json_bytes)
         
-        # Parse JSON
         json_data = json.loads(json_bytes.decode('utf-8'))
         
         return FinancialData.from_dict(json_data)
@@ -138,15 +130,12 @@ class FinancialDataStorage:
         if not file_path.exists():
             return False
         
-        # Read file
         with open(file_path, 'rb') as f:
             json_bytes = f.read()
         
-        # Decrypt if enabled
         if self.encrypted:
             json_bytes = self.cipher.decrypt(json_bytes)
         
-        # Calculate hash
         actual_hash = hashlib.sha256(json_bytes).digest()
         
         return actual_hash == expected_hash
@@ -166,15 +155,12 @@ class FinancialDataStorage:
         if not file_path.exists():
             return None
         
-        # Read file
         with open(file_path, 'rb') as f:
             json_bytes = f.read()
         
-        # Decrypt if enabled
         if self.encrypted:
             json_bytes = self.cipher.decrypt(json_bytes)
         
-        # Calculate hash
         return hashlib.sha256(json_bytes).digest()
 
     def delete(self, user_did: str) -> bool:
@@ -211,7 +197,6 @@ class FinancialDataStorage:
         if financial_data is None:
             financial_data = FinancialData(userDID=user_did)
         
-        # Check if asset with same ID already exists
         existing_index = next(
             (i for i, a in enumerate(financial_data.assets) if a.assetID == asset.assetID),
             None
@@ -260,7 +245,6 @@ class FinancialDataStorage:
         if financial_data is None:
             financial_data = FinancialData(userDID=user_did)
         
-        # Check if liability with same ID already exists
         existing_index = next(
             (i for i, l in enumerate(financial_data.liabilities) if l.liabilityID == liability.liabilityID),
             None

@@ -35,7 +35,6 @@ class FinancialDataService:
             (250_000, "upto250k"), (300_000, "upto300k"), (350_000, "upto350k"),
             (400_000, "upto400k"), (450_000, "upto450k"), (500_000, "upto500k"),
         ]
-# Compute financial summary
     def compute_summary(
         self,
         financial_data: FinancialData,
@@ -71,7 +70,6 @@ class FinancialDataService:
             credit_tier=credit_tier,
             income_band=income_band,
         )
-# Heuristic score: baseline 500, adjusted by net worth, DTI, risk score and utilization
     def _risk_score(self, net_worth, dti, utilization) -> float:
         score = 500.0
         score += min(max(net_worth / 10_000, -200), 300)
