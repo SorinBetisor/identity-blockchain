@@ -17,13 +17,15 @@ together {
     userDID : str
     assets : List[Asset]
     liabilities : List[Liability]
-    metadata : Dict
+    lastUpdated : str
+    metadata : Optional[Dict]
   }
 
   class Asset <<dataclass>> {
     assetID / assetType
     value / ownershipPercentage
-    metadata : Dict
+    lastUpdated : str
+    metadata : Optional[Dict]
   }
 
   class Liability <<dataclass>> {
@@ -31,6 +33,8 @@ together {
     amount / interestRate
     monthlyPayment / dueDate
     isOverdue : bool
+    lastUpdated : str
+    metadata : Optional[Dict]
   }
 
   class Summary <<dataclass>> {
@@ -61,11 +65,11 @@ class FinancialDataService {
 }
 
 class UserDirectory {
-  _username_to_address
-  _address_to_username
+  username_to_address
+  address_to_username
   __
   + register_username()
-  + lookup_address() / lookup_username()
+  + get_address() / get_username()
 }
 
 class IdentityVerification {
@@ -78,8 +82,11 @@ class IdentityVerification {
 
 class DataSharingClient {
   w3 : Web3
-  contracts / storage
-  financial_service / user_directory
+  contracts : Contracts
+  storage / user_directory
+  identity_verification
+  credit_calculator / validator_service
+  consent_service
   __
   + register_identity() / get_identity()
   + save_financial_profile()
@@ -87,15 +94,9 @@ class DataSharingClient {
   + create_consent() / grant_consent() / revoke_consent()
   + request_credit_tier() / request_income_band()
   + validator_update_profile()
-}
-
-class ContractDeployer {
-  identity_registry
-  consent_manager
-  data_broker
-  data_sharing_token
   __
-  + load_from_deployment()
+  loads contracts from artifacts
+  & frontend config
 }
 
 class APIServer <<FastAPI>> {
@@ -123,9 +124,9 @@ FinancialDataStorage --> Asset
 FinancialDataStorage --> Liability
 FinancialDataService --> Summary : produces
 DataSharingClient --> FinancialDataStorage
-DataSharingClient --> FinancialDataService
 DataSharingClient --> UserDirectory
-DataSharingClient --> ContractDeployer
+DataSharingClient --> IdentityVerification
+DataSharingClient ..> FinancialDataService : uses via calculator
 APIServer --> DataSharingClient : orchestrates
 ClientApplication --> APIServer : HTTP
 
